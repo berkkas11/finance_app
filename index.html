@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#31A075">
+<title>Финансы</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root {
+    --primary: #31A075;
+    --primary-dark: #27865F;
+    --primary-light: #4FBE93;
+    --bg: #F3F6F4;
+    --card: #FFFFFF;
+    --border: #E5ECE8;
+    --text: #1B2A25;
+    --text2: #61736C;
+    --muted: #97A6A0;
+    --expense: #E2564F;
+    --income: #2E9E68;
+    --accent: #F3B73F;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  header {
+    background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
+    color: #fff;
+    padding: calc(14px + env(safe-area-inset-top)) 18px 16px;
+  }
+
+  .brand { display: flex; align-items: center; justify-content: space-between; font-size: 15px; font-weight: 600; }
+  .brand button { background: rgba(255,255,255,.2); border: 0; color: #fff; font-size: 13px;
+                  padding: 7px 12px; border-radius: 9px; }
+
+  .balance { text-align: center; margin-top: 14px; }
+  .balance .caption { font-size: 11px; letter-spacing: .04em; color: #CDEDDF; }
+  .balance .value { font-size: 32px; font-weight: 700; margin-top: 2px; }
+  .balance .stats { font-size: 12.5px; color: #DCF0E7; margin-top: 6px; }
+
+  main { padding: 14px 14px 90px; }
+
+  .card { background: var(--card); border-radius: 16px; padding: 14px; margin-bottom: 12px;
+          box-shadow: 0 1px 10px rgba(0,0,0,.05); }
+
+  .row { display: flex; align-items: center; gap: 11px; padding: 9px 2px; }
+  .row + .row { border-top: 1px solid var(--border); }
+  .row .body { flex: 1; min-width: 0; }
+  .row .title { font-size: 14.5px; }
+  .row .note { font-size: 12px; color: var(--muted); margin-top: 2px;
+               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .amount { font-size: 14.5px; font-weight: 600; white-space: nowrap; }
+  .row .sub { font-size: 11.5px; color: var(--muted); text-align: right; margin-top: 2px; }
+
+  .badge { width: 38px; height: 38px; border-radius: 50%; flex: 0 0 38px;
+           display: flex; align-items: center; justify-content: center; }
+  .badge svg { width: 21px; height: 21px; }
+
+  .daygroup { font-size: 12.5px; font-weight: 600; color: var(--text2); margin: 14px 2px 4px;
+              display: flex; justify-content: space-between; }
+  .daygroup span { color: var(--muted); font-weight: 400; }
+
+  .fab { position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom));
+         width: 60px; height: 60px; border-radius: 30px; border: 0; background: var(--accent);
+         color: #4A3708; font-size: 32px; line-height: 1; box-shadow: 0 6px 18px rgba(0,0,0,.28); }
+
+  .sheet { position: fixed; inset: 0; background: var(--bg); overflow-y: auto; display: none; z-index: 20; }
+  .sheet.open { display: block; }
+  .sheet header { position: sticky; top: 0; z-index: 2; }
+  .sheet .content { padding: 16px 14px 30px; }
+
+  .tabs { display: flex; gap: 6px; margin-top: 12px; }
+  .tabs button { flex: 1; background: rgba(255,255,255,.18); border: 0; color: #CDEDDF;
+                 padding: 9px 0; border-radius: 10px; font-size: 13px; font-weight: 600; }
+  .tabs button.active { background: #fff; color: var(--primary-dark); }
+
+  label.field { display: block; font-size: 11.5px; font-weight: 600; color: var(--text2);
+                margin: 14px 2px 6px; letter-spacing: .02em; }
+
+  input, select, textarea {
+    width: 100%; font: inherit; color: var(--text); background: var(--card);
+    border: 1.4px solid var(--border); border-radius: 12px; padding: 11px 12px;
+  }
+  input:focus, select:focus { outline: 0; border-color: var(--primary); }
+  input.amount { font-size: 28px; font-weight: 700; text-align: right; }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 8px; }
+  .tile { background: var(--card); border: 2px solid transparent; border-radius: 14px;
+          padding: 10px 4px; text-align: center; font-size: 11.5px; }
+  .tile.sel { border-color: var(--primary); background: #E8F5EF; }
+  .tile .badge { margin: 0 auto 6px; }
+  .tile div.name { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+  .btn { display: block; width: 100%; border: 0; border-radius: 12px; padding: 14px;
+         font-size: 15px; font-weight: 600; margin-top: 16px; }
+  .btn.primary { background: var(--primary); color: #fff; }
+  .btn.ghost { background: transparent; color: var(--text2); border: 1.4px solid var(--border); }
+
+  .banner { background: #FDF4DC; border: 1px solid #F2E0AE; color: #6B5412;
+            border-radius: 12px; padding: 10px 12px; font-size: 12.5px; margin-bottom: 12px; }
+  .banner.bad { background: #FDECEA; border-color: #F5C6C2; color: #8B2E28; }
+  .muted { color: var(--muted); font-size: 12.5px; }
+  .center { text-align: center; padding: 30px 10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span>Финансы</span>
+    <span>
+      <button id="btn-refresh">Обновить</button>
+      <button id="btn-settings">⚙</button>
+    </span>
+  </div>
+  <div class="balance">
+    <div class="caption">ОБЩИЙ БАЛАНС</div>
+    <div class="value" id="balance">—</div>
+    <div class="stats" id="stats"></div>
+  </div>
+</header>
+
+<main>
+  <div id="pending-banner" class="banner" style="display:none"></div>
+  <div id="feed"><div class="center muted">Загружаю…</div></div>
+</main>
+
+<button class="fab" id="btn-add">+</button>
+
+<!-- ───────────── добавление операции ───────────── -->
+<section class="sheet" id="sheet-add">
+  <header>
+    <div class="brand"><span>Новая операция</span><button id="add-close">Закрыть</button></div>
+    <div class="tabs">
+      <button data-kind="0" class="active">Расход</button>
+      <button data-kind="1">Доход</button>
+      <button data-kind="2">Перевод</button>
+    </div>
+  </header>
+  <div class="content">
+    <label class="field">СУММА</label>
+    <input class="amount" id="add-amount" inputmode="decimal" placeholder="0">
+    <div class="muted" id="add-hint" style="margin-top:6px">Можно ввести выражение: 450+120*2</div>
+
+    <div id="add-category-block">
+      <label class="field">КАТЕГОРИЯ</label>
+      <div class="tiles" id="add-categories"></div>
+    </div>
+
+    <label class="field" id="add-account-label">СЧЁТ</label>
+    <select id="add-account"></select>
+
+    <div id="add-to-block" style="display:none">
+      <label class="field">НА СЧЁТ</label>
+      <select id="add-to-account"></select>
+    </div>
+
+    <label class="field">ДАТА</label>
+    <input type="date" id="add-date">
+
+    <label class="field">КОММЕНТАРИЙ</label>
+    <input id="add-note" placeholder="необязательно">
+
+    <button class="btn primary" id="add-save">Добавить</button>
+    <button class="btn ghost" id="add-cancel">Отмена</button>
+  </div>
+</section>
+
+<!-- ───────────── настройки ───────────── -->
+<section class="sheet" id="sheet-settings">
+  <header><div class="brand"><span>Подключение</span><button id="settings-close">Закрыть</button></div></header>
+  <div class="content">
+    <div class="muted">
+      Те же данные, что и в приложении на компьютере: раздел «Ещё» → «Синхронизация с телефоном».
+    </div>
+
+    <label class="field">ВЛАДЕЛЕЦ (логин на GitHub)</label>
+    <input id="cfg-owner" autocapitalize="none" autocorrect="off" spellcheck="false">
+
+    <label class="field">ПРИВАТНЫЙ РЕПОЗИТОРИЙ</label>
+    <input id="cfg-repo" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="finance_data">
+
+    <label class="field">ТОКЕН</label>
+    <input id="cfg-token" type="password" autocapitalize="none" autocorrect="off" spellcheck="false">
+
+    <div class="muted" style="margin-top:8px">
+      Токен хранится только в этом браузере и никуда больше не отправляется — кроме самого GitHub.
+    </div>
+
+    <button class="btn primary" id="cfg-save">Сохранить и проверить</button>
+    <button class="btn ghost" id="cfg-forget">Забыть на этом устройстве</button>
+    <div id="cfg-status" class="muted" style="margin-top:12px"></div>
+  </div>
+</section>
+
+<script>
+'use strict';
+
+// ─────────────────────────── хранение настроек и очереди ───────────────────────────
+
+const LS = {
+  get cfg() { try { return JSON.parse(localStorage.getItem('fw.cfg') || '{}'); } catch (e) { return {}; } },
+  set cfg(v) { localStorage.setItem('fw.cfg', JSON.stringify(v)); },
+  get state() { try { return JSON.parse(localStorage.getItem('fw.state') || 'null'); } catch (e) { return null; } },
+  set state(v) { localStorage.setItem('fw.state', JSON.stringify(v)); },
+  get icons() { try { return JSON.parse(localStorage.getItem('fw.icons') || '{}'); } catch (e) { return {}; } },
+  set icons(v) { localStorage.setItem('fw.icons', JSON.stringify(v)); },
+  get month() { try { return JSON.parse(localStorage.getItem('fw.month') || 'null'); } catch (e) { return null; } },
+  set month(v) { localStorage.setItem('fw.month', JSON.stringify(v)); },
+  get queue() { try { return JSON.parse(localStorage.getItem('fw.queue') || '[]'); } catch (e) { return []; } },
+  set queue(v) { localStorage.setItem('fw.queue', JSON.stringify(v)); },
+};
+
+// ─────────────────────────── работа с GitHub ───────────────────────────
+
+function api(path) {
+  const c = LS.cfg;
+  return 'https://api.github.com/repos/' + encodeURIComponent(c.owner) + '/' +
+         encodeURIComponent(c.repo) + '/contents/' + path;
+}
+
+async function ghGet(path) {
+  const c = LS.cfg;
+  const r = await fetch(api(path) + '?t=' + Date.now(), {
+    headers: { Authorization: 'Bearer ' + c.token, Accept: 'application/vnd.github+json' },
+    cache: 'no-store',
+  });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error('GitHub ' + r.status + (r.status === 401 ? ' — токен не принят' : ''));
+  const j = await r.json();
+  return { text: decodeURIComponent(escape(atob((j.content || '').replace(/\n/g, '')))), sha: j.sha };
+}
+
+async function ghPut(path, text, message) {
+  const c = LS.cfg;
+  const body = {
+    message: message,
+    content: btoa(unescape(encodeURIComponent(text))),
+  };
+  const r = await fetch(api(path), {
+    method: 'PUT',
+    headers: {
+      Authorization: 'Bearer ' + c.token,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error('GitHub ' + r.status);
+  return r.json();
+}
+
+// ─────────────────────────── вспомогательное ───────────────────────────
+
+const MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+
+function money(value) {
+  const s = LS.state || {};
+  const sym = s.currencySymbol || '₽';
+  const cents = !!s.showCents;
+  const sign = value < 0 ? '−' : '';
+  const abs = Math.abs(value);
+  const text = abs.toLocaleString('ru-RU', {
+    minimumFractionDigits: cents ? 2 : 0,
+    maximumFractionDigits: cents ? 2 : 0,
+  });
+  return sign + text.replace(/ /g, ' ') + ' ' + sym;
+}
+
+function evalAmount(input) {
+  if (!input) return NaN;
+  const clean = String(input).replace(/[\s ]/g, '').replace(/,/g, '.').replace(/[х×]/gi, '*').replace(/÷/g, '/');
+  if (!/^[0-9.+\-*/()]+$/.test(clean)) return NaN;
+  try {
+    const value = Function('"use strict";return (' + clean + ')')();
+    return typeof value === 'number' && isFinite(value) ? Math.round(value * 100) / 100 : NaN;
+  } catch (e) { return NaN; }
+}
+
+function todayISO() {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
+function monthKey(iso) { return iso.slice(0, 7); }
+
+function dayTitle(iso) {
+  const today = todayISO();
+  const d = new Date(iso + 'T00:00:00');
+  const yesterday = new Date(Date.now() - 86400000);
+  const yIso = new Date(yesterday.getTime() - yesterday.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const text = d.getDate() + ' ' + MONTHS[d.getMonth()];
+  if (iso === today) return 'Сегодня, ' + text;
+  if (iso === yIso) return 'Вчера, ' + text;
+  return text;
+}
+
+function icon(key, color) {
+  const defs = LS.icons || {};
+  const d = defs[key] || defs['dots'] || {};
+  let inner = '';
+  if (d.stroke) inner += '<path d="' + d.stroke + '" fill="none" stroke="#fff" stroke-width="' +
+    (d.width || 1.8) + '" stroke-linecap="round" stroke-linejoin="round"/>';
+  if (d.fill) inner += '<path d="' + d.fill + '" fill="#fff"/>';
+  return '<div class="badge" style="background:' + (color || '#9AA8A2') + '">' +
+         '<svg viewBox="0 0 24 24">' + inner + '</svg></div>';
+}
+
+function esc(text) {
+  return String(text == null ? '' : text).replace(/[&<>"]/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+const byId = id => document.getElementById(id);
+
+// ─────────────────────────── загрузка данных ───────────────────────────
+
+let busy = false;
+
+async function refresh(silent) {
+  const cfg = LS.cfg;
+  if (!cfg.owner || !cfg.repo || !cfg.token) { openSettings(); return; }
+  if (busy) return;
+  busy = true;
+
+  try {
+    await flushQueue();
+
+    const state = await ghGet('state.json');
+    if (state) LS.state = JSON.parse(state.text);
+
+    const icons = await ghGet('icons.json');
+    if (icons) LS.icons = JSON.parse(icons.text);
+
+    const key = monthKey(todayISO());
+    const month = await ghGet('ops/' + key + '.json');
+    LS.month = month ? JSON.parse(month.text) : { month: key, operations: [] };
+
+    render();
+  } catch (e) {
+    if (!silent) showBanner(e.message, true);
+    render();
+  } finally {
+    busy = false;
+  }
+}
+
+async function flushQueue() {
+  const queue = LS.queue;
+  if (!queue.length) return;
+
+  const rest = [];
+  for (const item of queue) {
+    try {
+      await ghPut('inbox/' + item.id + '.json', JSON.stringify(item), 'операция с телефона');
+    } catch (e) {
+      rest.push(item);
+    }
+  }
+  LS.queue = rest;
+}
+
+// ─────────────────────────── отрисовка ───────────────────────────
+
+function pendingAdjust() {
+  // операции, ещё не принятые компьютером, учитываем в балансе сразу
+  let delta = 0;
+  for (const item of LS.queue) {
+    if (item.action !== 'upsert' || !item.op) continue;
+    if (item.op.Kind === 1) delta += item.op.Amount;
+    else if (item.op.Kind === 0) delta -= item.op.Amount;
+  }
+  return delta;
+}
+
+function render() {
+  const state = LS.state;
+  const queue = LS.queue;
+
+  byId('pending-banner').style.display = queue.length ? 'block' : 'none';
+  if (queue.length) {
+    byId('pending-banner').className = 'banner';
+    byId('pending-banner').textContent =
+      'Ждут отправки: ' + queue.length + '. Уйдут, когда появится связь.';
+  }
+
+  if (!state) {
+    byId('feed').innerHTML = '<div class="center muted">Нет данных. Проверьте подключение в настройках.</div>';
+    return;
+  }
+
+  byId('balance').textContent = money((state.total || 0) + pendingAdjust());
+
+  const month = LS.month || { operations: [] };
+  const ops = (month.operations || []).concat(
+    queue.filter(q => q.action === 'upsert' && q.op && monthKey(q.op.Date.slice(0, 10)) === monthKey(todayISO()))
+         .map(q => Object.assign({}, q.op, { _pending: true })));
+
+  let income = 0, expense = 0;
+  for (const op of ops) {
+    if (op.Kind === 1) income += op.Amount;
+    else if (op.Kind === 0) expense += op.Amount;
+  }
+  byId('stats').textContent = 'за месяц  +' + money(income) + '   −' + money(expense);
+
+  const accounts = {}, categories = {};
+  (state.accounts || []).forEach(a => accounts[a.Id] = a);
+  (state.categories || []).forEach(c => categories[c.Id] = c);
+
+  const groups = {};
+  for (const op of ops) {
+    const day = (op.Date || '').slice(0, 10);
+    (groups[day] = groups[day] || []).push(op);
+  }
+
+  const days = Object.keys(groups).sort().reverse();
+  if (!days.length) {
+    byId('feed').innerHTML = '<div class="center muted">В этом месяце операций пока нет.</div>';
+    return;
+  }
+
+  let html = '';
+  for (const day of days) {
+    const list = groups[day];
+    const sum = list.reduce((acc, op) => acc + (op.Kind === 1 ? op.Amount : -op.Amount), 0);
+
+    html += '<div class="daygroup"><span style="color:var(--text2)">' + esc(dayTitle(day)) +
+            '</span><span>' + money(sum) + '</span></div><div class="card">';
+
+    for (const op of list) {
+      const transfer = op.Kind === 2;
+      const cat = categories[op.CategoryId];
+      const acc = accounts[op.AccountId];
+      const to = accounts[op.ToAccountId];
+
+      const color = transfer ? (to ? to.Color : '#9AA8A2') : (cat ? cat.Color : '#9AA8A2');
+      const key = transfer ? (to ? to.Icon : 'export') : (cat ? cat.Icon : 'dots');
+      const title = transfer
+        ? (acc ? acc.Name : '—') + ' → ' + (to ? to.Name : '—')
+        : (cat ? cat.Name : 'Без категории');
+
+      const amount = transfer ? money(op.Amount)
+        : (op.Kind === 1 ? '+' : '−') + money(op.Amount);
+      const tint = transfer ? 'var(--text2)' : (op.Kind === 1 ? 'var(--income)' : 'var(--expense)');
+
+      html += '<div class="row">' + icon(key, color) +
+        '<div class="body"><div class="title">' + esc(title) + '</div>' +
+        (op.Note ? '<div class="note">' + esc(op.Note) + '</div>' : '') +
+        '</div><div><div class="amount" style="color:' + tint + '">' + amount + '</div>' +
+        '<div class="sub">' + (op._pending ? 'ждёт отправки' : esc(acc ? acc.Name : '')) + '</div></div></div>';
+    }
+    html += '</div>';
+  }
+
+  byId('feed').innerHTML = html;
+}
+
+function showBanner(text, bad) {
+  const el = byId('pending-banner');
+  el.style.display = 'block';
+  el.className = 'banner' + (bad ? ' bad' : '');
+  el.textContent = text;
+}
+
+// ─────────────────────────── добавление операции ───────────────────────────
+
+let addKind = 0;
+let addCategoryId = null;
+
+function openAdd() {
+  const state = LS.state;
+  if (!state) { showBanner('Сначала загрузите данные', true); return; }
+
+  addKind = 0;
+  addCategoryId = null;
+  document.querySelectorAll('#sheet-add .tabs button').forEach(b =>
+    b.classList.toggle('active', b.dataset.kind === '0'));
+
+  byId('add-amount').value = '';
+  byId('add-note').value = '';
+  byId('add-date').value = todayISO();
+
+  fillAccounts();
+  fillCategories();
+  applyKind();
+
+  byId('sheet-add').classList.add('open');
+  setTimeout(() => byId('add-amount').focus(), 120);
+}
+
+function fillAccounts() {
+  const accounts = (LS.state.accounts || []).filter(a => !a.Archived);
+  const options = accounts.map(a => '<option value="' + esc(a.Id) + '">' + esc(a.Name) + '</option>').join('');
+  byId('add-account').innerHTML = options;
+  byId('add-to-account').innerHTML = options;
+  if (accounts.length > 1) byId('add-to-account').selectedIndex = 1;
+}
+
+function fillCategories() {
+  const cats = (LS.state.categories || []).filter(c => !c.Archived && c.Kind === addKind);
+  byId('add-categories').innerHTML = cats.map(c =>
+    '<div class="tile" data-id="' + esc(c.Id) + '">' + icon(c.Icon, c.Color) +
+    '<div class="name">' + esc(c.Name) + '</div></div>').join('');
+
+  byId('add-categories').querySelectorAll('.tile').forEach(tile => {
+    tile.onclick = () => {
+      addCategoryId = tile.dataset.id;
+      byId('add-categories').querySelectorAll('.tile').forEach(t =>
+        t.classList.toggle('sel', t === tile));
+    };
+  });
+}
+
+function applyKind() {
+  const transfer = addKind === 2;
+  byId('add-category-block').style.display = transfer ? 'none' : 'block';
+  byId('add-to-block').style.display = transfer ? 'block' : 'none';
+  byId('add-account-label').textContent = transfer ? 'СО СЧЁТА' : 'СЧЁТ';
+}
+
+function saveOperation() {
+  const amount = evalAmount(byId('add-amount').value);
+  if (!(amount > 0)) { alert('Введите сумму больше нуля'); return; }
+
+  const transfer = addKind === 2;
+  if (!transfer && !addCategoryId) { alert('Выберите категорию'); return; }
+
+  const from = byId('add-account').value;
+  const to = byId('add-to-account').value;
+  if (transfer && from === to) { alert('Счета должны быть разными'); return; }
+
+  const id = (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+  const record = {
+    id: id,
+    device: 'phone',
+    createdUtc: new Date().toISOString(),
+    action: 'upsert',
+    op: {
+      Id: id,
+      Kind: addKind,
+      Amount: amount,
+      CategoryId: transfer ? '' : addCategoryId,
+      AccountId: from,
+      ToAccountId: transfer ? to : null,
+      Date: byId('add-date').value + 'T00:00:00',
+      Note: byId('add-note').value.trim(),
+      CreatedAt: new Date().toISOString(),
+    },
+  };
+
+  const queue = LS.queue;
+  queue.push(record);
+  LS.queue = queue;
+
+  byId('sheet-add').classList.remove('open');
+  render();
+  flushQueue().then(render).catch(() => {});
+}
+
+// ─────────────────────────── настройки ───────────────────────────
+
+function openSettings() {
+  const cfg = LS.cfg;
+  byId('cfg-owner').value = cfg.owner || '';
+  byId('cfg-repo').value = cfg.repo || '';
+  byId('cfg-token').value = cfg.token || '';
+  byId('cfg-status').textContent = '';
+  byId('sheet-settings').classList.add('open');
+}
+
+async function saveSettings() {
+  LS.cfg = {
+    owner: byId('cfg-owner').value.trim(),
+    repo: byId('cfg-repo').value.trim(),
+    token: byId('cfg-token').value.trim(),
+  };
+
+  byId('cfg-status').textContent = 'Проверяю…';
+  try {
+    const state = await ghGet('state.json');
+    if (!state) {
+      byId('cfg-status').textContent =
+        'Доступ есть, но данных ещё нет — нажмите «Синхронизировать сейчас» в приложении на компьютере.';
+      return;
+    }
+    LS.state = JSON.parse(state.text);
+    byId('cfg-status').textContent = 'Готово, данные на месте.';
+    byId('sheet-settings').classList.remove('open');
+    refresh(true);
+  } catch (e) {
+    byId('cfg-status').textContent = 'Не вышло: ' + e.message;
+  }
+}
+
+// ─────────────────────────── события ───────────────────────────
+
+byId('btn-add').onclick = openAdd;
+byId('btn-refresh').onclick = () => refresh(false);
+byId('btn-settings').onclick = openSettings;
+byId('add-close').onclick = byId('add-cancel').onclick = () => byId('sheet-add').classList.remove('open');
+byId('settings-close').onclick = () => byId('sheet-settings').classList.remove('open');
+byId('add-save').onclick = saveOperation;
+byId('cfg-save').onclick = saveSettings;
+byId('cfg-forget').onclick = () => {
+  if (confirm('Удалить настройки подключения с этого устройства?')) {
+    localStorage.clear();
+    location.reload();
+  }
+};
+
+byId('add-amount').oninput = () => {
+  const value = evalAmount(byId('add-amount').value);
+  const raw = byId('add-amount').value;
+  byId('add-hint').textContent = !raw ? 'Можно ввести выражение: 450+120*2'
+    : (value > 0 ? (/[+\-*/()]/.test(raw) ? '= ' + money(value) : ' ') : 'Не похоже на сумму');
+};
+
+document.querySelectorAll('#sheet-add .tabs button').forEach(button => {
+  button.onclick = () => {
+    addKind = Number(button.dataset.kind);
+    addCategoryId = null;
+    document.querySelectorAll('#sheet-add .tabs button').forEach(b => b.classList.toggle('active', b === button));
+    fillCategories();
+    applyKind();
+  };
+});
+
+window.addEventListener('online', () => flushQueue().then(render).catch(() => {}));
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+render();
+refresh(true);
+</script>
+</body>
+</html>
