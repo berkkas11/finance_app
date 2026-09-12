@@ -593,7 +593,9 @@ function saveOperation() {
 function openSettings() {
   const cfg = LS.cfg;
   byId('cfg-owner').value = cfg.owner || '';
-  byId('cfg-repo').value = cfg.repo || '';
+  // подставляем настоящее значение, а не подсказку: серый текст в поле
+  // легко принять за заполненное, и уходит пустой запрос
+  byId('cfg-repo').value = cfg.repo || 'finance_data';
   byId('cfg-token').value = cfg.token || '';
   byId('cfg-status').textContent = '';
   byId('sheet-settings').classList.add('open');
@@ -605,6 +607,17 @@ async function saveSettings() {
     repo: byId('cfg-repo').value.trim(),
     token: byId('cfg-token').value.trim(),
   };
+
+  const missing = [];
+  if (!LS.cfg.owner) missing.push('логин');
+  if (!LS.cfg.repo) missing.push('репозиторий');
+  if (!LS.cfg.token) missing.push('токен');
+
+  if (missing.length) {
+    byId('cfg-status').textContent = 'Не заполнено: ' + missing.join(', ') +
+      '. Серый текст в поле — это подсказка, её нужно набрать или вставить.';
+    return;
+  }
 
   byId('cfg-status').textContent = 'Проверяю…';
   try {
