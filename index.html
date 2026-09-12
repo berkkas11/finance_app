@@ -231,7 +231,8 @@ function api(path) {
 
 async function ghGet(path) {
   const c = LS.cfg;
-  const r = await fetch(api(path) + '?t=' + Date.now(), {
+  const ref = c.branch ? '&ref=' + encodeURIComponent(c.branch) : '';
+  const r = await fetch(api(path) + '?t=' + Date.now() + ref, {
     headers: { Authorization: 'Bearer ' + c.token, Accept: 'application/vnd.github+json' },
     cache: 'no-store',
   });
@@ -239,6 +240,26 @@ async function ghGet(path) {
   if (!r.ok) throw new Error('GitHub ' + r.status + (r.status === 401 ? ' — токен не принят' : ''));
   const j = await r.json();
   return { text: decodeURIComponent(escape(atob((j.content || '').replace(/\n/g, '')))), sha: j.sha };
+}
+
+// GitHub отвечает 404 и на «нет файла», и на «репозиторий не виден этому токену»,
+// поэтому сначала спрашиваем про сам репозиторий — иначе причина остаётся загадкой.
+async function ghRepo() {
+  const c = LS.cfg;
+  const r = await fetch('https://api.github.com/repos/' + encodeURIComponent(c.owner) + '/' +
+                        encodeURIComponent(c.repo) + '?t=' + Date.now(), {
+    headers: { Authorization: 'Bearer ' + c.token, Accept: 'application/vnd.github+json' },
+    cache: 'no-store',
+  });
+
+  if (r.status === 401) throw new Error('Токен не принят — проверьте, что скопирован целиком и не истёк.');
+  if (r.status === 404) throw new Error(
+    'Репозиторий ' + c.owner + '/' + c.repo + ' не виден этому токену. Проверьте имя репозитория ' +
+    '(у вас данные в finance_data, а страница живёт в finance_app) и что в токене на вкладке ' +
+    'Repository access выбран именно он.');
+  if (!r.ok) throw new Error('GitHub ответил ' + r.status);
+
+  return r.json();
 }
 
 async function ghPut(path, text, message) {
@@ -587,18 +608,38 @@ async function saveSettings() {
 
   byId('cfg-status').textContent = 'Проверяю…';
   try {
-    const state = await ghGet('state.json');
+    // 1. виден ли репозиторий и в какой ветке искать
+    const repo = await ghRepo();
+    const cfg = LS.cfg;
+    cfg.branch = repo.default_branch || 'main';
+    LS.cfg = cfg;
+
+    // 2. есть ли выложенное состояние
+    let state = await ghGet('state.json');
+
+    // компьютер мог записать в другую ветку — проверим и её
+    if (!state && cfg.branch !== 'main') {
+      cfg.branch = 'main';
+      LS.cfg = cfg;
+      state = await ghGet('state.json');
+      if (!state) { cfg.branch = repo.default_branch || 'main'; LS.cfg = cfg; }
+    }
+
     if (!state) {
       byId('cfg-status').textContent =
-        'Доступ есть, но данных ещё нет — нажмите «Синхронизировать сейчас» в приложении на компьютере.';
+        'Репозиторий ' + repo.full_name + ' виден, ветка ' + cfg.branch +
+        ', но файла state.json в нём нет. Нажмите «Синхронизировать сейчас» в приложении на компьютере — ' +
+        'и проверьте, что там указан тот же репозиторий.';
       return;
     }
+
     LS.state = JSON.parse(state.text);
-    byId('cfg-status').textContent = 'Готово, данные на месте.';
+    const months = (LS.state.months || []).length;
+    byId('cfg-status').textContent = 'Готово: данные на месте, месяцев в истории — ' + months + '.';
     byId('sheet-settings').classList.remove('open');
     refresh(true);
   } catch (e) {
-    byId('cfg-status').textContent = 'Не вышло: ' + e.message;
+    byId('cfg-status').textContent = e.message;
   }
 }
 
