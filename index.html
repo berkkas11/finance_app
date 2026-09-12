@@ -9,49 +9,45 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
   :root {
-    --primary: #31A075;
-    --primary-dark: #27865F;
-    --primary-light: #4FBE93;
-    --bg: #F3F6F4;
-    --card: #FFFFFF;
-    --border: #E5ECE8;
-    --text: #1B2A25;
-    --text2: #61736C;
-    --muted: #97A6A0;
-    --expense: #E2564F;
-    --income: #2E9E68;
-    --accent: #F3B73F;
+    --primary: #31A075; --primary-dark: #27865F; --primary-light: #4FBE93;
+    --bg: #F3F6F4; --card: #FFFFFF; --border: #E5ECE8;
+    --text: #1B2A25; --text2: #61736C; --muted: #97A6A0;
+    --expense: #E2564F; --income: #2E9E68; --accent: #F3B73F;
   }
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
   body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
+    margin: 0; background: var(--bg); color: var(--text);
     font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    padding-bottom: env(safe-area-inset-bottom);
   }
 
   header {
     background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
-    color: #fff;
-    padding: calc(14px + env(safe-area-inset-top)) 18px 16px;
+    color: #fff; padding: calc(14px + env(safe-area-inset-top)) 18px 16px;
   }
 
   .brand { display: flex; align-items: center; justify-content: space-between; font-size: 15px; font-weight: 600; }
   .brand button { background: rgba(255,255,255,.2); border: 0; color: #fff; font-size: 13px;
-                  padding: 7px 12px; border-radius: 9px; }
+                  padding: 7px 12px; border-radius: 9px; margin-left: 6px; }
 
   .balance { text-align: center; margin-top: 14px; }
   .balance .caption { font-size: 11px; letter-spacing: .04em; color: #CDEDDF; }
   .balance .value { font-size: 32px; font-weight: 700; margin-top: 2px; }
   .balance .stats { font-size: 12.5px; color: #DCF0E7; margin-top: 6px; }
 
-  main { padding: 14px 14px 90px; }
+  .monthbar { display: flex; align-items: center; justify-content: center; gap: 14px;
+              margin-top: 12px; font-size: 14px; font-weight: 600; }
+  .monthbar button { background: rgba(255,255,255,.2); border: 0; color: #fff;
+                     width: 32px; height: 32px; border-radius: 16px; font-size: 16px; line-height: 1; }
+  .monthbar button[disabled] { opacity: .35; }
+  .monthbar span { min-width: 150px; text-align: center; }
+
+  main { padding: 14px 14px calc(94px + env(safe-area-inset-bottom)); }
 
   .card { background: var(--card); border-radius: 16px; padding: 14px; margin-bottom: 12px;
           box-shadow: 0 1px 10px rgba(0,0,0,.05); }
+  .card h3 { margin: 0 0 10px; font-size: 14.5px; }
 
   .row { display: flex; align-items: center; gap: 11px; padding: 9px 2px; }
   .row + .row { border-top: 1px solid var(--border); }
@@ -70,27 +66,41 @@
               display: flex; justify-content: space-between; }
   .daygroup span { color: var(--muted); font-weight: 400; }
 
-  .fab { position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom));
-         width: 60px; height: 60px; border-radius: 30px; border: 0; background: var(--accent);
-         color: #4A3708; font-size: 32px; line-height: 1; box-shadow: 0 6px 18px rgba(0,0,0,.28); }
+  .track { height: 6px; border-radius: 3px; background: #EDF2F0; margin-top: 7px; overflow: hidden; }
+  .track div { height: 100%; border-radius: 3px; background: var(--primary); }
+
+  .fab { position: fixed; right: 18px; bottom: calc(78px + env(safe-area-inset-bottom));
+         width: 58px; height: 58px; border-radius: 29px; border: 0; background: var(--accent);
+         color: #4A3708; font-size: 30px; line-height: 1; box-shadow: 0 6px 18px rgba(0,0,0,.28); z-index: 5; }
+
+  nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
+        background: var(--card); border-top: 1px solid var(--border);
+        display: flex; padding-bottom: env(safe-area-inset-bottom); }
+  nav button { flex: 1; background: none; border: 0; color: var(--muted);
+               font-size: 11px; padding: 9px 0 8px; }
+  nav button.active { color: var(--primary); font-weight: 600; }
+  nav button svg { display: block; margin: 0 auto 3px; width: 21px; height: 21px; }
 
   .sheet { position: fixed; inset: 0; background: var(--bg); overflow-y: auto; display: none; z-index: 20; }
   .sheet.open { display: block; }
   .sheet header { position: sticky; top: 0; z-index: 2; }
-  .sheet .content { padding: 16px 14px 30px; }
+  .sheet .content { padding: 16px 14px calc(30px + env(safe-area-inset-bottom)); }
 
   .tabs { display: flex; gap: 6px; margin-top: 12px; }
   .tabs button { flex: 1; background: rgba(255,255,255,.18); border: 0; color: #CDEDDF;
                  padding: 9px 0; border-radius: 10px; font-size: 13px; font-weight: 600; }
   .tabs button.active { background: #fff; color: var(--primary-dark); }
 
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .chips button { background: var(--card); border: 1.4px solid var(--border); color: var(--text2);
+                  padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+  .chips button.active { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+
   label.field { display: block; font-size: 11.5px; font-weight: 600; color: var(--text2);
                 margin: 14px 2px 6px; letter-spacing: .02em; }
 
-  input, select, textarea {
-    width: 100%; font: inherit; color: var(--text); background: var(--card);
-    border: 1.4px solid var(--border); border-radius: 12px; padding: 11px 12px;
-  }
+  input, select { width: 100%; font: inherit; color: var(--text); background: var(--card);
+                  border: 1.4px solid var(--border); border-radius: 12px; padding: 11px 12px; }
   input:focus, select:focus { outline: 0; border-color: var(--primary); }
   input.amount { font-size: 28px; font-weight: 700; text-align: right; }
 
@@ -102,46 +112,55 @@
   .tile div.name { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 
   .btn { display: block; width: 100%; border: 0; border-radius: 12px; padding: 14px;
-         font-size: 15px; font-weight: 600; margin-top: 16px; }
+         font-size: 15px; font-weight: 600; margin-top: 14px; }
   .btn.primary { background: var(--primary); color: #fff; }
   .btn.ghost { background: transparent; color: var(--text2); border: 1.4px solid var(--border); }
+  .btn.danger { background: transparent; color: var(--expense); border: 1.4px solid #F3D0CE; }
 
   .banner { background: #FDF4DC; border: 1px solid #F2E0AE; color: #6B5412;
             border-radius: 12px; padding: 10px 12px; font-size: 12.5px; margin-bottom: 12px; }
   .banner.bad { background: #FDECEA; border-color: #F5C6C2; color: #8B2E28; }
   .muted { color: var(--muted); font-size: 12.5px; }
   .center { text-align: center; padding: 30px 10px; }
+  .split { display: flex; gap: 10px; }
+  .split > * { flex: 1; }
+  .big { font-size: 22px; font-weight: 700; }
 </style>
 </head>
 <body>
 
-<header>
+<header id="top">
   <div class="brand">
-    <span>Финансы</span>
+    <span id="screen-title">Финансы</span>
     <span>
       <button id="btn-refresh">Обновить</button>
       <button id="btn-settings">⚙</button>
     </span>
   </div>
   <div class="balance">
-    <div class="caption">ОБЩИЙ БАЛАНС</div>
+    <div class="caption" id="balance-caption">ОБЩИЙ БАЛАНС</div>
     <div class="value" id="balance">—</div>
     <div class="stats" id="stats"></div>
+  </div>
+  <div class="monthbar" id="monthbar">
+    <button id="month-prev">‹</button><span id="month-label"></span><button id="month-next">›</button>
   </div>
 </header>
 
 <main>
   <div id="pending-banner" class="banner" style="display:none"></div>
-  <div id="feed"><div class="center muted">Загружаю…</div></div>
+  <div id="view"><div class="center muted">Загружаю…</div></div>
 </main>
 
 <button class="fab" id="btn-add">+</button>
 
-<!-- ───────────── добавление операции ───────────── -->
+<nav id="nav"></nav>
+
+<!-- операция -->
 <section class="sheet" id="sheet-add">
   <header>
-    <div class="brand"><span>Новая операция</span><button id="add-close">Закрыть</button></div>
-    <div class="tabs">
+    <div class="brand"><span id="add-title">Новая операция</span><button id="add-close">Закрыть</button></div>
+    <div class="tabs" id="add-tabs">
       <button data-kind="0" class="active">Расход</button>
       <button data-kind="1">Доход</button>
       <button data-kind="2">Перевод</button>
@@ -172,23 +191,46 @@
     <input id="add-note" placeholder="необязательно">
 
     <button class="btn primary" id="add-save">Добавить</button>
+    <button class="btn danger" id="add-delete" style="display:none">Удалить операцию</button>
     <button class="btn ghost" id="add-cancel">Отмена</button>
   </div>
 </section>
 
-<!-- ───────────── настройки ───────────── -->
+<!-- прогноз -->
+<section class="sheet" id="sheet-forecast">
+  <header><div class="brand"><span>Прогноз накоплений</span><button id="forecast-close">Закрыть</button></div></header>
+  <div class="content">
+    <div class="muted" id="forecast-info"></div>
+
+    <label class="field">СРОК</label>
+    <div class="chips" id="forecast-horizons"></div>
+
+    <div class="split">
+      <div>
+        <label class="field">ПОПОЛНЕНИЕ В МЕСЯЦ</label>
+        <input id="forecast-topup" inputmode="decimal" value="0">
+      </div>
+      <div style="max-width:110px">
+        <label class="field">ЧИСЛО</label>
+        <input id="forecast-day" inputmode="numeric" value="1">
+      </div>
+    </div>
+
+    <div id="forecast-result"></div>
+  </div>
+</section>
+
+<!-- настройки -->
 <section class="sheet" id="sheet-settings">
   <header><div class="brand"><span>Подключение</span><button id="settings-close">Закрыть</button></div></header>
   <div class="content">
-    <div class="muted">
-      Те же данные, что и в приложении на компьютере: раздел «Ещё» → «Синхронизация с телефоном».
-    </div>
+    <div class="muted">Те же данные, что в приложении на компьютере: «Ещё» → «Синхронизация с телефоном».</div>
 
     <label class="field">ВЛАДЕЛЕЦ (логин на GitHub)</label>
     <input id="cfg-owner" autocapitalize="none" autocorrect="off" spellcheck="false">
 
     <label class="field">ПРИВАТНЫЙ РЕПОЗИТОРИЙ</label>
-    <input id="cfg-repo" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="finance_data">
+    <input id="cfg-repo" autocapitalize="none" autocorrect="off" spellcheck="false">
 
     <label class="field">ТОКЕН</label>
     <input id="cfg-token" type="password" autocapitalize="none" autocorrect="off" spellcheck="false">
@@ -206,22 +248,25 @@
 <script>
 'use strict';
 
-// ─────────────────────────── хранение настроек и очереди ───────────────────────────
+// ═══════════════════════ хранилище ═══════════════════════
 
 const LS = {
-  get cfg() { try { return JSON.parse(localStorage.getItem('fw.cfg') || '{}'); } catch (e) { return {}; } },
-  set cfg(v) { localStorage.setItem('fw.cfg', JSON.stringify(v)); },
-  get state() { try { return JSON.parse(localStorage.getItem('fw.state') || 'null'); } catch (e) { return null; } },
-  set state(v) { localStorage.setItem('fw.state', JSON.stringify(v)); },
-  get icons() { try { return JSON.parse(localStorage.getItem('fw.icons') || '{}'); } catch (e) { return {}; } },
-  set icons(v) { localStorage.setItem('fw.icons', JSON.stringify(v)); },
-  get month() { try { return JSON.parse(localStorage.getItem('fw.month') || 'null'); } catch (e) { return null; } },
-  set month(v) { localStorage.setItem('fw.month', JSON.stringify(v)); },
-  get queue() { try { return JSON.parse(localStorage.getItem('fw.queue') || '[]'); } catch (e) { return []; } },
-  set queue(v) { localStorage.setItem('fw.queue', JSON.stringify(v)); },
+  read(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch (e) { return fallback; } },
+  write(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {} },
+
+  get cfg() { return LS.read('fw.cfg', {}); },
+  set cfg(v) { LS.write('fw.cfg', v); },
+  get state() { return LS.read('fw.state', null); },
+  set state(v) { LS.write('fw.state', v); },
+  get icons() { return LS.read('fw.icons', {}); },
+  set icons(v) { LS.write('fw.icons', v); },
+  get months() { return LS.read('fw.months', {}); },
+  set months(v) { LS.write('fw.months', v); },
+  get queue() { return LS.read('fw.queue', []); },
+  set queue(v) { LS.write('fw.queue', v); },
 };
 
-// ─────────────────────────── работа с GitHub ───────────────────────────
+// ═══════════════════════ GitHub ═══════════════════════
 
 function api(path) {
   const c = LS.cfg;
@@ -242,32 +287,11 @@ async function ghGet(path) {
   return { text: decodeURIComponent(escape(atob((j.content || '').replace(/\n/g, '')))), sha: j.sha };
 }
 
-// GitHub отвечает 404 и на «нет файла», и на «репозиторий не виден этому токену»,
-// поэтому сначала спрашиваем про сам репозиторий — иначе причина остаётся загадкой.
-async function ghRepo() {
-  const c = LS.cfg;
-  const r = await fetch('https://api.github.com/repos/' + encodeURIComponent(c.owner) + '/' +
-                        encodeURIComponent(c.repo) + '?t=' + Date.now(), {
-    headers: { Authorization: 'Bearer ' + c.token, Accept: 'application/vnd.github+json' },
-    cache: 'no-store',
-  });
-
-  if (r.status === 401) throw new Error('Токен не принят — проверьте, что скопирован целиком и не истёк.');
-  if (r.status === 404) throw new Error(
-    'Репозиторий ' + c.owner + '/' + c.repo + ' не виден этому токену. Проверьте имя репозитория ' +
-    '(у вас данные в finance_data, а страница живёт в finance_app) и что в токене на вкладке ' +
-    'Repository access выбран именно он.');
-  if (!r.ok) throw new Error('GitHub ответил ' + r.status);
-
-  return r.json();
-}
-
 async function ghPut(path, text, message) {
   const c = LS.cfg;
-  const body = {
-    message: message,
-    content: btoa(unescape(encodeURIComponent(text))),
-  };
+  const body = { message, content: btoa(unescape(encodeURIComponent(text))) };
+  if (c.branch) body.branch = c.branch;
+
   const r = await fetch(api(path), {
     method: 'PUT',
     headers: {
@@ -281,78 +305,162 @@ async function ghPut(path, text, message) {
   return r.json();
 }
 
-// ─────────────────────────── вспомогательное ───────────────────────────
+// GitHub отвечает 404 и на «нет файла», и на «репозиторий не виден токену» —
+// без отдельного запроса причину не различить.
+async function ghRepo() {
+  const c = LS.cfg;
+  const r = await fetch('https://api.github.com/repos/' + encodeURIComponent(c.owner) + '/' +
+                        encodeURIComponent(c.repo) + '?t=' + Date.now(), {
+    headers: { Authorization: 'Bearer ' + c.token, Accept: 'application/vnd.github+json' },
+    cache: 'no-store',
+  });
 
-const MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  if (r.status === 401) throw new Error('Токен не принят — проверьте, что скопирован целиком и не истёк.');
+  if (r.status === 404) throw new Error(
+    'Репозиторий ' + c.owner + '/' + c.repo + ' не виден этому токену. Проверьте имя репозитория ' +
+    'и что в токене на вкладке Repository access выбран именно он.');
+  if (!r.ok) throw new Error('GitHub ответил ' + r.status);
+  return r.json();
+}
+
+// ═══════════════════════ мелочи ═══════════════════════
+
+const MONTHS_GEN = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const MONTHS_NOM = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+
+const byId = id => document.getElementById(id);
+const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const round2 = v => Math.round(v * 100) / 100;
 
 function money(value) {
   const s = LS.state || {};
-  const sym = s.currencySymbol || '₽';
   const cents = !!s.showCents;
-  const sign = value < 0 ? '−' : '';
-  const abs = Math.abs(value);
-  const text = abs.toLocaleString('ru-RU', {
-    minimumFractionDigits: cents ? 2 : 0,
-    maximumFractionDigits: cents ? 2 : 0,
-  });
-  return sign + text.replace(/ /g, ' ') + ' ' + sym;
+  const text = Math.abs(value).toLocaleString('ru-RU', {
+    minimumFractionDigits: cents ? 2 : 0, maximumFractionDigits: cents ? 2 : 0 });
+  return (value < 0 ? '−' : '') + text.replace(/ /g, ' ') + ' ' + (s.currencySymbol || '₽');
+}
+
+function percent(share) {
+  const p = share * 100;
+  if (p > 0 && p < 1) return '<1%';
+  return Math.round(p) + '%';
 }
 
 function evalAmount(input) {
   if (!input) return NaN;
-  const clean = String(input).replace(/[\s ]/g, '').replace(/,/g, '.').replace(/[х×]/gi, '*').replace(/÷/g, '/');
+  const clean = String(input).replace(/[\s ]/g, '').replace(/,/g, '.').replace(/[х×]/gi, '*').replace(/÷/g, '/');
   if (!/^[0-9.+\-*/()]+$/.test(clean)) return NaN;
   try {
-    const value = Function('"use strict";return (' + clean + ')')();
-    return typeof value === 'number' && isFinite(value) ? Math.round(value * 100) / 100 : NaN;
+    const v = Function('"use strict";return (' + clean + ')')();
+    return typeof v === 'number' && isFinite(v) ? round2(v) : NaN;
   } catch (e) { return NaN; }
 }
 
-function todayISO() {
-  const d = new Date();
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+function iso(date) {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+const todayISO = () => iso(new Date());
+const monthKey = s => String(s).slice(0, 7);
+
+function monthTitle(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  const now = new Date();
+  return MONTHS_NOM[m - 1] + (y === now.getFullYear() ? '' : ' ' + y);
 }
 
-function monthKey(iso) { return iso.slice(0, 7); }
-
-function dayTitle(iso) {
+function dayTitle(isoDay) {
   const today = todayISO();
-  const d = new Date(iso + 'T00:00:00');
-  const yesterday = new Date(Date.now() - 86400000);
-  const yIso = new Date(yesterday.getTime() - yesterday.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-  const text = d.getDate() + ' ' + MONTHS[d.getMonth()];
-  if (iso === today) return 'Сегодня, ' + text;
-  if (iso === yIso) return 'Вчера, ' + text;
+  const yesterday = iso(new Date(Date.now() - 86400000));
+  const d = new Date(isoDay + 'T00:00:00');
+  const text = d.getDate() + ' ' + MONTHS_GEN[d.getMonth()];
+  if (isoDay === today) return 'Сегодня, ' + text;
+  if (isoDay === yesterday) return 'Вчера, ' + text;
   return text;
 }
 
-function icon(key, color) {
-  const defs = LS.icons || {};
-  const d = defs[key] || defs['dots'] || {};
+function icon(key, color, size) {
+  const d = (LS.icons || {})[key] || (LS.icons || {})['dots'] || {};
   let inner = '';
   if (d.stroke) inner += '<path d="' + d.stroke + '" fill="none" stroke="#fff" stroke-width="' +
     (d.width || 1.8) + '" stroke-linecap="round" stroke-linejoin="round"/>';
   if (d.fill) inner += '<path d="' + d.fill + '" fill="#fff"/>';
-  return '<div class="badge" style="background:' + (color || '#9AA8A2') + '">' +
+  const style = size ? ' style="width:' + size + 'px;height:' + size + 'px;flex-basis:' + size + 'px"' : '';
+  return '<div class="badge"' + style + ' data-c="' + (color || '#9AA8A2') + '">' +
          '<svg viewBox="0 0 24 24">' + inner + '</svg></div>';
 }
 
-function esc(text) {
-  return String(text == null ? '' : text).replace(/[&<>"]/g, c =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// цвет кружка ставим после вставки: в атрибуте style его перебил бы размер
+function paintBadges(root) {
+  (root || document).querySelectorAll('.badge[data-c]').forEach(el => {
+    el.style.background = el.dataset.c;
+    el.removeAttribute('data-c');
+  });
 }
 
-const byId = id => document.getElementById(id);
+// ═══════════════════════ данные ═══════════════════════
 
-// ─────────────────────────── загрузка данных ───────────────────────────
-
+let currentMonth = monthKey(todayISO());
+let screen = 'ops';
 let busy = false;
+
+const accountsById = () => Object.fromEntries((LS.state?.accounts || []).map(a => [a.Id, a]));
+const categoriesById = () => Object.fromEntries((LS.state?.categories || []).map(c => [c.Id, c]));
+
+/** Эффект операции на общий баланс: перевод его не меняет. */
+function effect(op) {
+  if (!op || op.Kind === 2) return 0;
+  return op.Kind === 1 ? op.Amount : -op.Amount;
+}
+
+/**
+ * Операции месяца с учётом того, что ещё не уехало на компьютер.
+ * Очередь проходим по порядку: последняя запись про операцию побеждает,
+ * иначе изменённая и затем удалённая операция возвращалась бы в список.
+ */
+function opsOf(ym) {
+  const stored = (LS.months[ym] || { operations: [] }).operations || [];
+
+  const overrides = new Map();          // id → операция либо null, если удалена
+  for (const item of LS.queue) {
+    if (item.action === 'delete') overrides.set(item.opId, null);
+    else if (item.op) overrides.set(item.op.Id, item.op);
+  }
+
+  const result = [];
+  for (const op of stored) {
+    if (!overrides.has(op.Id)) { result.push(op); continue; }
+
+    const replacement = overrides.get(op.Id);
+    overrides.delete(op.Id);
+    if (replacement && monthKey(replacement.Date) === ym)
+      result.push({ ...replacement, _pending: true });
+  }
+
+  for (const op of overrides.values())
+    if (op && monthKey(op.Date) === ym) result.push({ ...op, _pending: true });
+
+  return result;
+}
+
+function pendingAdjust() {
+  return LS.queue.reduce((sum, item) => sum + (item.balanceDelta || 0), 0);
+}
+
+function knownMonths() {
+  const fromState = (LS.state?.months || []).slice();
+  const now = monthKey(todayISO());
+  if (!fromState.includes(now)) fromState.push(now);
+  return fromState.sort();
+}
+
+// ═══════════════════════ загрузка ═══════════════════════
 
 async function refresh(silent) {
   const cfg = LS.cfg;
   if (!cfg.owner || !cfg.repo || !cfg.token) { openSettings(); return; }
   if (busy) return;
   busy = true;
+  byId('btn-refresh').textContent = '…';
 
   try {
     await flushQueue();
@@ -363,17 +471,24 @@ async function refresh(silent) {
     const icons = await ghGet('icons.json');
     if (icons) LS.icons = JSON.parse(icons.text);
 
-    const key = monthKey(todayISO());
-    const month = await ghGet('ops/' + key + '.json');
-    LS.month = month ? JSON.parse(month.text) : { month: key, operations: [] };
-
+    await loadMonth(currentMonth, true);
     render();
   } catch (e) {
     if (!silent) showBanner(e.message, true);
     render();
   } finally {
     busy = false;
+    byId('btn-refresh').textContent = 'Обновить';
   }
+}
+
+async function loadMonth(ym, force) {
+  const cache = LS.months;
+  if (cache[ym] && !force) return;
+
+  const file = await ghGet('ops/' + ym + '.json');
+  cache[ym] = file ? JSON.parse(file.text) : { month: ym, operations: [] };
+  LS.months = cache;
 }
 
 async function flushQueue() {
@@ -391,99 +506,261 @@ async function flushQueue() {
   LS.queue = rest;
 }
 
-// ─────────────────────────── отрисовка ───────────────────────────
+function enqueue(record) {
+  const queue = LS.queue;
+  queue.push(record);
+  LS.queue = queue;
+  render();
+  flushQueue().then(render).catch(() => {});
+}
 
-function pendingAdjust() {
-  // операции, ещё не принятые компьютером, учитываем в балансе сразу
-  let delta = 0;
-  for (const item of LS.queue) {
-    if (item.action !== 'upsert' || !item.op) continue;
-    if (item.op.Kind === 1) delta += item.op.Amount;
-    else if (item.op.Kind === 0) delta -= item.op.Amount;
-  }
-  return delta;
+// ═══════════════════════ отрисовка ═══════════════════════
+
+const SCREENS = [
+  { id: 'ops', name: 'Операции', icon: 'M3,6 H21 M3,12 H21 M3,18 H14' },
+  { id: 'report', name: 'Отчёт', icon: 'M4,20 V10 M10,20 V4 M16,20 V14 M22,20 H2' },
+  { id: 'accounts', name: 'Счета', icon: 'M3,7 H21 V18 H3 Z M3,11 H21' },
+  { id: 'budgets', name: 'Бюджеты', icon: 'M6,18 L18,6 M8,7 A2,2 0 1,1 8,7.01 M16,17 A2,2 0 1,1 16,17.01' },
+];
+
+function renderNav() {
+  byId('nav').innerHTML = SCREENS.map(s =>
+    '<button data-screen="' + s.id + '" class="' + (screen === s.id ? 'active' : '') + '">' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+    'stroke-linecap="round" stroke-linejoin="round"><path d="' + s.icon + '"/></svg>' +
+    s.name + '</button>').join('');
+
+  byId('nav').querySelectorAll('button').forEach(b => {
+    b.onclick = async () => {
+      screen = b.dataset.screen;
+      render();
+      if (screen === 'ops' || screen === 'report') {
+        try { await loadMonth(currentMonth); render(); } catch (e) {}
+      }
+    };
+  });
 }
 
 function render() {
+  renderNav();
+
   const state = LS.state;
   const queue = LS.queue;
 
   byId('pending-banner').style.display = queue.length ? 'block' : 'none';
   if (queue.length) {
     byId('pending-banner').className = 'banner';
-    byId('pending-banner').textContent =
-      'Ждут отправки: ' + queue.length + '. Уйдут, когда появится связь.';
+    byId('pending-banner').textContent = 'Ждут отправки: ' + queue.length + '. Уйдут, когда появится связь.';
   }
 
+  byId('btn-add').style.display = screen === 'ops' ? 'block' : 'none';
+  byId('monthbar').style.display = (screen === 'ops' || screen === 'report') ? 'flex' : 'none';
+
   if (!state) {
-    byId('feed').innerHTML = '<div class="center muted">Нет данных. Проверьте подключение в настройках.</div>';
+    byId('view').innerHTML = '<div class="center muted">Нет данных. Проверьте подключение в настройках.</div>';
     return;
   }
 
   byId('balance').textContent = money((state.total || 0) + pendingAdjust());
+  byId('month-label').textContent = monthTitle(currentMonth);
 
-  const month = LS.month || { operations: [] };
-  const ops = (month.operations || []).concat(
-    queue.filter(q => q.action === 'upsert' && q.op && monthKey(q.op.Date.slice(0, 10)) === monthKey(todayISO()))
-         .map(q => Object.assign({}, q.op, { _pending: true })));
+  const months = knownMonths();
+  byId('month-prev').disabled = months.indexOf(currentMonth) <= 0;
+  byId('month-next').disabled = currentMonth >= monthKey(todayISO());
 
+  const ops = opsOf(currentMonth);
   let income = 0, expense = 0;
   for (const op of ops) {
     if (op.Kind === 1) income += op.Amount;
     else if (op.Kind === 0) expense += op.Amount;
   }
   byId('stats').textContent = 'за месяц  +' + money(income) + '   −' + money(expense);
+  byId('screen-title').textContent = SCREENS.find(s => s.id === screen)?.name || 'Финансы';
 
-  const accounts = {}, categories = {};
-  (state.accounts || []).forEach(a => accounts[a.Id] = a);
-  (state.categories || []).forEach(c => categories[c.Id] = c);
+  if (screen === 'ops') renderOps(ops);
+  else if (screen === 'report') renderReport(ops);
+  else if (screen === 'accounts') renderAccounts();
+  else if (screen === 'budgets') renderBudgets();
 
-  const groups = {};
-  for (const op of ops) {
-    const day = (op.Date || '').slice(0, 10);
-    (groups[day] = groups[day] || []).push(op);
-  }
+  paintBadges(byId('view'));
+}
 
-  const days = Object.keys(groups).sort().reverse();
-  if (!days.length) {
-    byId('feed').innerHTML = '<div class="center muted">В этом месяце операций пока нет.</div>';
+function opRowHtml(op) {
+  const accounts = accountsById(), categories = categoriesById();
+  const transfer = op.Kind === 2;
+  const cat = categories[op.CategoryId];
+  const acc = accounts[op.AccountId];
+  const to = accounts[op.ToAccountId];
+
+  const color = transfer ? (to?.Color || '#9AA8A2') : (cat?.Color || '#9AA8A2');
+  const key = transfer ? (to?.Icon || 'export') : (cat?.Icon || 'dots');
+  const title = transfer ? (acc?.Name || '—') + ' → ' + (to?.Name || '—') : (cat?.Name || 'Без категории');
+  const amount = transfer ? money(op.Amount) : (op.Kind === 1 ? '+' : '−') + money(op.Amount);
+  const tint = transfer ? 'var(--text2)' : (op.Kind === 1 ? 'var(--income)' : 'var(--expense)');
+
+  return '<div class="row" data-op="' + esc(op.Id) + '">' + icon(key, color) +
+    '<div class="body"><div class="title">' + esc(title) + '</div>' +
+    (op.Note ? '<div class="note">' + esc(op.Note) + '</div>' : '') +
+    '</div><div><div class="amount" style="color:' + tint + '">' + amount + '</div>' +
+    '<div class="sub">' + (op._pending ? 'ждёт отправки' : esc(acc?.Name || '')) + '</div></div></div>';
+}
+
+function renderOps(ops) {
+  if (!ops.length) {
+    byId('view').innerHTML = '<div class="center muted">В этом месяце операций нет.</div>';
     return;
   }
 
+  const groups = {};
+  for (const op of ops) (groups[String(op.Date).slice(0, 10)] ||= []).push(op);
+
   let html = '';
-  for (const day of days) {
+  for (const day of Object.keys(groups).sort().reverse()) {
     const list = groups[day];
-    const sum = list.reduce((acc, op) => acc + (op.Kind === 1 ? op.Amount : -op.Amount), 0);
-
+    const sum = list.reduce((acc, op) => acc + effect(op), 0);
     html += '<div class="daygroup"><span style="color:var(--text2)">' + esc(dayTitle(day)) +
-            '</span><span>' + money(sum) + '</span></div><div class="card">';
+            '</span><span>' + money(sum) + '</span></div><div class="card">' +
+            list.map(opRowHtml).join('') + '</div>';
+  }
 
-    for (const op of list) {
-      const transfer = op.Kind === 2;
-      const cat = categories[op.CategoryId];
-      const acc = accounts[op.AccountId];
-      const to = accounts[op.ToAccountId];
+  byId('view').innerHTML = html;
+  byId('view').querySelectorAll('.row[data-op]').forEach(row => {
+    row.onclick = () => {
+      const op = opsOf(currentMonth).find(o => o.Id === row.dataset.op);
+      if (op) openOperation(op);
+    };
+  });
+}
 
-      const color = transfer ? (to ? to.Color : '#9AA8A2') : (cat ? cat.Color : '#9AA8A2');
-      const key = transfer ? (to ? to.Icon : 'export') : (cat ? cat.Icon : 'dots');
-      const title = transfer
-        ? (acc ? acc.Name : '—') + ' → ' + (to ? to.Name : '—')
-        : (cat ? cat.Name : 'Без категории');
+function renderReport(ops) {
+  const categories = categoriesById();
+  const kinds = [
+    { kind: 0, title: 'Расходы по категориям', tint: 'var(--expense)' },
+    { kind: 1, title: 'Доходы по категориям', tint: 'var(--income)' },
+  ];
 
-      const amount = transfer ? money(op.Amount)
-        : (op.Kind === 1 ? '+' : '−') + money(op.Amount);
-      const tint = transfer ? 'var(--text2)' : (op.Kind === 1 ? 'var(--income)' : 'var(--expense)');
+  let html = '';
+  for (const { kind, title, tint } of kinds) {
+    const list = ops.filter(o => o.Kind === kind);
+    const total = list.reduce((s, o) => s + o.Amount, 0);
+    if (!total) continue;
 
-      html += '<div class="row">' + icon(key, color) +
-        '<div class="body"><div class="title">' + esc(title) + '</div>' +
-        (op.Note ? '<div class="note">' + esc(op.Note) + '</div>' : '') +
-        '</div><div><div class="amount" style="color:' + tint + '">' + amount + '</div>' +
-        '<div class="sub">' + (op._pending ? 'ждёт отправки' : esc(acc ? acc.Name : '')) + '</div></div></div>';
+    const byCat = {};
+    for (const op of list) byCat[op.CategoryId] = (byCat[op.CategoryId] || 0) + op.Amount;
+
+    const rows = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+    const max = rows[0][1];
+
+    html += '<div class="card"><h3>' + title + '</h3>' +
+      '<div class="row" style="padding-top:0"><div class="body"><div class="title">Всего</div></div>' +
+      '<div class="amount" style="color:' + tint + '">' + money(total) + '</div></div>';
+
+    for (const [id, sum] of rows) {
+      const cat = categories[id];
+      html += '<div class="row">' + icon(cat?.Icon || 'dots', cat?.Color || '#9AA8A2', 34) +
+        '<div class="body"><div class="title">' + esc(cat?.Name || 'Без категории') +
+        '<span class="muted" style="float:right">' + percent(sum / total) + '</span></div>' +
+        '<div class="track"><div style="width:' + (sum / max * 100) + '%;background:' +
+        (cat?.Color || '#9AA8A2') + '"></div></div></div>' +
+        '<div class="amount">' + money(sum) + '</div></div>';
     }
     html += '</div>';
   }
 
-  byId('feed').innerHTML = html;
+  byId('view').innerHTML = html || '<div class="center muted">В этом месяце считать нечего.</div>';
+}
+
+function renderAccounts() {
+  const state = LS.state;
+  const balances = state.balances || {};
+  const accrued = state.accrued || {};
+
+  let html = '<div class="card">';
+  for (const acc of (state.accounts || []).filter(a => !a.Archived)) {
+    const balance = balances[acc.Id] || 0;
+    const savings = acc.Kind === 1;
+
+    html += '<div class="row" ' + (savings ? 'data-forecast="' + esc(acc.Id) + '"' : '') + '>' +
+      icon(acc.Icon, acc.Color) +
+      '<div class="body"><div class="title">' + esc(acc.Name) + '</div>' +
+      '<div class="note">' + (savings
+        ? 'вклад ' + rateText(acc.AnnualRate) + ' · капитализация ' +
+          (acc.Capitalization === 1 ? 'ежедневно' : 'ежемесячно')
+        : 'обычный счёт') + '</div></div>' +
+      '<div><div class="amount" style="color:' + (balance < 0 ? 'var(--expense)' : 'var(--text)') + '">' +
+      money(balance) + '</div>' +
+      (savings ? '<div class="sub" style="color:var(--income)">+' + money(accrued[acc.Id] || 0) + ' процентами</div>'
+               : '') + '</div></div>';
+  }
+  html += '</div>';
+
+  const savings = (state.accounts || []).filter(a => !a.Archived && a.Kind === 1);
+  if (savings.length) html += '<div class="muted" style="margin:0 4px">Нажмите на вклад, чтобы посмотреть прогноз.</div>';
+
+  byId('view').innerHTML = html;
+  byId('view').querySelectorAll('[data-forecast]').forEach(row => {
+    row.onclick = () => openForecast(row.dataset.forecast);
+  });
+}
+
+function renderBudgets() {
+  const state = LS.state;
+  const categories = categoriesById();
+  const budgets = (state.budgets || []).filter(b => b.Enabled && b.Limit > 0);
+  const spentMap = state.budgetsSpent || {};
+
+  if (!budgets.length) {
+    byId('view').innerHTML = '<div class="center muted">Бюджеты не заданы. Их можно настроить в приложении на компьютере.</div>';
+    return;
+  }
+
+  const periodName = p => p === 1 ? 'в неделю' : p === 3 ? 'в год' : 'в месяц';
+  const thisMonth = monthKey(todayISO());
+
+  let totalLimit = 0, totalSpent = 0;
+  let html = '<div class="card">';
+
+  for (const b of budgets) {
+    const cat = categories[b.CategoryId];
+    let spent = spentMap[b.Id] || 0;
+
+    // к тому, что посчитал компьютер, добавляем свои неотправленные траты текущего месяца
+    if (b.Period === 2) {
+      for (const item of LS.queue) {
+        if (item.action !== 'upsert') continue;
+        const op = item.op;
+        if (op.Kind === 0 && op.CategoryId === b.CategoryId && monthKey(op.Date) === thisMonth)
+          spent += op.Amount;
+      }
+    }
+
+    totalLimit += b.Limit;
+    totalSpent += spent;
+
+    const share = Math.min(1, spent / b.Limit);
+    const over = spent > b.Limit;
+    const color = over ? 'var(--expense)' : share > 0.85 ? 'var(--accent)' : 'var(--primary)';
+
+    html += '<div class="row">' + icon(cat?.Icon || 'dots', cat?.Color || '#9AA8A2', 34) +
+      '<div class="body"><div class="title">' + esc(cat?.Name || '—') +
+      '<span class="muted" style="float:right">' + periodName(b.Period) + '</span></div>' +
+      '<div class="track"><div style="width:' + (share * 100) + '%;background:' + color + '"></div></div>' +
+      '<div class="note" style="color:' + (over ? 'var(--expense)' : 'var(--muted)') + '">' +
+      money(spent) + ' из ' + money(b.Limit) +
+      (over ? ' · превышение ' + money(spent - b.Limit) : ' · осталось ' + money(b.Limit - spent)) +
+      '</div></div></div>';
+  }
+
+  html += '</div><div class="card"><div class="row" style="padding:0">' +
+    '<div class="body"><div class="title">Всего лимитов</div>' +
+    '<div class="note">потрачено ' + money(totalSpent) + '</div></div>' +
+    '<div class="amount">' + money(totalLimit) + '</div></div></div>';
+
+  byId('view').innerHTML = html;
+}
+
+function rateText(rate) {
+  return (Math.round(rate * 100) / 100).toLocaleString('ru-RU') + '%';
 }
 
 function showBanner(text, bad) {
@@ -493,51 +770,84 @@ function showBanner(text, bad) {
   el.textContent = text;
 }
 
-// ─────────────────────────── добавление операции ───────────────────────────
+// ═══════════════════════ операция: создание и правка ═══════════════════════
 
 let addKind = 0;
 let addCategoryId = null;
+let editing = null;
 
 function openAdd() {
-  const state = LS.state;
-  if (!state) { showBanner('Сначала загрузите данные', true); return; }
-
+  if (!LS.state) { showBanner('Сначала загрузите данные', true); return; }
+  editing = null;
   addKind = 0;
   addCategoryId = null;
-  document.querySelectorAll('#sheet-add .tabs button').forEach(b =>
-    b.classList.toggle('active', b.dataset.kind === '0'));
 
+  byId('add-title').textContent = 'Новая операция';
+  byId('add-save').textContent = 'Добавить';
+  byId('add-delete').style.display = 'none';
   byId('add-amount').value = '';
   byId('add-note').value = '';
   byId('add-date').value = todayISO();
+  byId('add-hint').textContent = 'Можно ввести выражение: 450+120*2';
 
+  setKindTabs(0);
   fillAccounts();
   fillCategories();
   applyKind();
-
   byId('sheet-add').classList.add('open');
   setTimeout(() => byId('add-amount').focus(), 120);
 }
 
-function fillAccounts() {
-  const accounts = (LS.state.accounts || []).filter(a => !a.Archived);
+function openOperation(op) {
+  editing = op;
+  addKind = op.Kind;
+  addCategoryId = op.CategoryId || null;
+
+  byId('add-title').textContent = 'Операция';
+  byId('add-save').textContent = 'Сохранить';
+  byId('add-delete').style.display = 'block';
+  byId('add-amount').value = String(op.Amount).replace('.', ',');
+  byId('add-note').value = op.Note || '';
+  byId('add-date').value = String(op.Date).slice(0, 10);
+  byId('add-hint').textContent = ' ';
+
+  setKindTabs(op.Kind);
+  fillAccounts(op.AccountId, op.ToAccountId);
+  fillCategories();
+  applyKind();
+  byId('sheet-add').classList.add('open');
+}
+
+function setKindTabs(kind) {
+  byId('add-tabs').querySelectorAll('button').forEach(b =>
+    b.classList.toggle('active', Number(b.dataset.kind) === kind));
+}
+
+function fillAccounts(selected, selectedTo) {
+  const accounts = (LS.state.accounts || []).filter(a => !a.Archived || a.Id === selected || a.Id === selectedTo);
   const options = accounts.map(a => '<option value="' + esc(a.Id) + '">' + esc(a.Name) + '</option>').join('');
+
   byId('add-account').innerHTML = options;
   byId('add-to-account').innerHTML = options;
-  if (accounts.length > 1) byId('add-to-account').selectedIndex = 1;
+
+  if (selected) byId('add-account').value = selected;
+  if (selectedTo) byId('add-to-account').value = selectedTo;
+  else if (accounts.length > 1 && byId('add-to-account').value === byId('add-account').value)
+    byId('add-to-account').selectedIndex = accounts.findIndex(a => a.Id !== byId('add-account').value);
 }
 
 function fillCategories() {
-  const cats = (LS.state.categories || []).filter(c => !c.Archived && c.Kind === addKind);
+  const cats = (LS.state.categories || []).filter(c => c.Kind === addKind && (!c.Archived || c.Id === addCategoryId));
   byId('add-categories').innerHTML = cats.map(c =>
-    '<div class="tile" data-id="' + esc(c.Id) + '">' + icon(c.Icon, c.Color) +
-    '<div class="name">' + esc(c.Name) + '</div></div>').join('');
+    '<div class="tile' + (c.Id === addCategoryId ? ' sel' : '') + '" data-id="' + esc(c.Id) + '">' +
+    icon(c.Icon, c.Color) + '<div class="name">' + esc(c.Name) + '</div></div>').join('');
+
+  paintBadges(byId('add-categories'));
 
   byId('add-categories').querySelectorAll('.tile').forEach(tile => {
     tile.onclick = () => {
       addCategoryId = tile.dataset.id;
-      byId('add-categories').querySelectorAll('.tile').forEach(t =>
-        t.classList.toggle('sel', t === tile));
+      byId('add-categories').querySelectorAll('.tile').forEach(t => t.classList.toggle('sel', t === tile));
     };
   });
 }
@@ -560,41 +870,172 @@ function saveOperation() {
   const to = byId('add-to-account').value;
   if (transfer && from === to) { alert('Счета должны быть разными'); return; }
 
-  const id = (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
-  const record = {
-    id: id,
+  const id = editing ? editing.Id : (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+  const op = {
+    Id: id,
+    Kind: addKind,
+    Amount: amount,
+    CategoryId: transfer ? '' : addCategoryId,
+    AccountId: from,
+    ToAccountId: transfer ? to : null,
+    Date: byId('add-date').value + 'T00:00:00',
+    Note: byId('add-note').value.trim(),
+    CreatedAt: editing?.CreatedAt || new Date().toISOString(),
+  };
+
+  enqueue({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
     device: 'phone',
     createdUtc: new Date().toISOString(),
     action: 'upsert',
-    op: {
-      Id: id,
-      Kind: addKind,
-      Amount: amount,
-      CategoryId: transfer ? '' : addCategoryId,
-      AccountId: from,
-      ToAccountId: transfer ? to : null,
-      Date: byId('add-date').value + 'T00:00:00',
-      Note: byId('add-note').value.trim(),
-      CreatedAt: new Date().toISOString(),
-    },
-  };
-
-  const queue = LS.queue;
-  queue.push(record);
-  LS.queue = queue;
+    op,
+    balanceDelta: effect(op) - effect(editing),
+  });
 
   byId('sheet-add').classList.remove('open');
-  render();
-  flushQueue().then(render).catch(() => {});
 }
 
-// ─────────────────────────── настройки ───────────────────────────
+function deleteOperation() {
+  if (!editing) return;
+  if (!confirm('Удалить операцию?')) return;
+
+  enqueue({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+    device: 'phone',
+    createdUtc: new Date().toISOString(),
+    action: 'delete',
+    opId: editing.Id,
+    balanceDelta: -effect(editing),
+  });
+
+  byId('sheet-add').classList.remove('open');
+}
+
+// ═══════════════════════ прогноз ═══════════════════════
+// Повторяет расчёт из приложения на компьютере: база копится каждый день,
+// зачисляется в конце расчётного периода и дальше сама приносит проценты.
+
+let forecastAccount = null;
+let forecastUntil = null;
+
+const daysInYear = y => ((y % 4 === 0 && y % 100 !== 0) || y % 400 === 0) ? 366 : 365;
+const daysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
+const isLastDayOfMonth = d => d.getDate() === daysInMonth(d.getFullYear(), d.getMonth());
+
+function computeForecast(account, startBalance, until, topUp, topUpDay) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const result = { start: startBalance, points: [{ date: iso(today), balance: startBalance, interest: 0 }],
+                   interest: 0, added: 0, days: 0 };
+
+  let balance = startBalance, pending = 0;
+  const rate = account.Kind === 1 ? Number(account.AnnualRate) || 0 : 0;
+
+  for (let d = new Date(today.getTime() + 86400000); d <= until; d = new Date(d.getTime() + 86400000)) {
+    if (topUp > 0) {
+      const day = Math.min(topUpDay, daysInMonth(d.getFullYear(), d.getMonth()));
+      if (d.getDate() === day) { balance += topUp; result.added += topUp; }
+    }
+
+    if (rate > 0 && balance > 0) pending += balance * rate / 100 / daysInYear(d.getFullYear());
+
+    const payout = account.Capitalization === 1 || isLastDayOfMonth(d);
+    if (payout && rate > 0) {
+      const gained = round2(pending);
+      balance += gained;
+      result.interest += gained;
+      pending = 0;
+    }
+
+    if (isLastDayOfMonth(d) || d.getTime() === until.getTime())
+      result.points.push({ date: iso(d), balance, interest: result.interest });
+  }
+
+  result.final = balance;
+  result.days = Math.round((until - today) / 86400000);
+  return result;
+}
+
+function openForecast(accountId) {
+  const state = LS.state;
+  forecastAccount = (state.accounts || []).find(a => a.Id === accountId);
+  if (!forecastAccount) return;
+
+  const effRate = (Math.pow(1 + (Number(forecastAccount.AnnualRate) || 0) / 100 /
+    (forecastAccount.Capitalization === 1 ? 365 : 12), forecastAccount.Capitalization === 1 ? 365 : 12) - 1) * 100;
+
+  byId('forecast-info').textContent =
+    forecastAccount.Name + ': ставка ' + rateText(forecastAccount.AnnualRate) + ' годовых, ' +
+    (forecastAccount.Capitalization === 1 ? 'ежедневная' : 'ежемесячная') + ' капитализация — ' +
+    'это ' + rateText(effRate) + ' в год. Сейчас ' + money((state.balances || {})[accountId] || 0) + '.';
+
+  const horizons = [
+    ['6 месяцев', 6], ['1 год', 12], ['3 года', 36], ['5 лет', 60], ['10 лет', 120],
+  ];
+  byId('forecast-horizons').innerHTML = horizons.map(([name, months], i) =>
+    '<button data-months="' + months + '"' + (i === 1 ? ' class="active"' : '') + '>' + name + '</button>').join('');
+
+  byId('forecast-horizons').querySelectorAll('button').forEach(b => {
+    b.onclick = () => {
+      byId('forecast-horizons').querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+      const until = new Date(); until.setHours(0, 0, 0, 0);
+      until.setMonth(until.getMonth() + Number(b.dataset.months));
+      forecastUntil = until;
+      recalcForecast();
+    };
+  });
+
+  const until = new Date(); until.setHours(0, 0, 0, 0);
+  until.setFullYear(until.getFullYear() + 1);
+  forecastUntil = until;
+
+  byId('sheet-forecast').classList.add('open');
+  recalcForecast();
+}
+
+function recalcForecast() {
+  if (!forecastAccount || !forecastUntil) return;
+
+  const balance = (LS.state.balances || {})[forecastAccount.Id] || 0;
+  const topUp = evalAmount(byId('forecast-topup').value) || 0;
+  const day = Math.max(1, Math.min(31, parseInt(byId('forecast-day').value, 10) || 1));
+
+  const f = computeForecast(forecastAccount, balance, forecastUntil, topUp, day);
+  const own = f.start + f.added;
+
+  let html = '<div class="card" style="margin-top:16px"><div class="muted">Будет на счёте</div>' +
+    '<div class="big">' + money(f.final) + '</div>' +
+    '<div class="split" style="margin-top:12px">' +
+    '<div><div class="muted">Внесено</div><div style="font-weight:600">' + money(own) + '</div></div>' +
+    '<div><div class="muted">Проценты</div><div style="font-weight:600;color:var(--income)">+' +
+    money(f.interest) + '</div></div></div>' +
+    '<div class="muted" style="margin-top:10px">За ' + f.days + ' дн. проценты добавят ' +
+    percent(own > 0 ? f.interest / own : 0) + ' к вложенному.</div></div>';
+
+  // вехи: последняя точка каждого полугодия плюс итог
+  const marks = [];
+  const step = f.points.length > 26 ? 6 : 3;
+  for (let i = step; i < f.points.length - 1; i += step) marks.push(f.points[i]);
+  marks.push(f.points[f.points.length - 1]);
+
+  html += '<div class="card"><h3>По срокам</h3>';
+  for (const p of marks) {
+    const d = new Date(p.date + 'T00:00:00');
+    html += '<div class="row"><div class="body"><div class="title">' +
+      d.getDate() + ' ' + MONTHS_GEN[d.getMonth()] + ' ' + d.getFullYear() + '</div>' +
+      '<div class="note" style="color:var(--income)">+' + money(p.interest) + ' процентами</div></div>' +
+      '<div class="amount">' + money(p.balance) + '</div></div>';
+  }
+  html += '</div>';
+
+  byId('forecast-result').innerHTML = html;
+}
+
+// ═══════════════════════ настройки ═══════════════════════
 
 function openSettings() {
   const cfg = LS.cfg;
   byId('cfg-owner').value = cfg.owner || '';
-  // подставляем настоящее значение, а не подсказку: серый текст в поле
-  // легко принять за заполненное, и уходит пустой запрос
+  // подставляем значением, а не подсказкой: серый текст легко принять за заполненное
   byId('cfg-repo').value = cfg.repo || 'finance_data';
   byId('cfg-token').value = cfg.token || '';
   byId('cfg-status').textContent = '';
@@ -612,43 +1053,33 @@ async function saveSettings() {
   if (!LS.cfg.owner) missing.push('логин');
   if (!LS.cfg.repo) missing.push('репозиторий');
   if (!LS.cfg.token) missing.push('токен');
-
   if (missing.length) {
-    byId('cfg-status').textContent = 'Не заполнено: ' + missing.join(', ') +
-      '. Серый текст в поле — это подсказка, её нужно набрать или вставить.';
+    byId('cfg-status').textContent = 'Не заполнено: ' + missing.join(', ') + '.';
     return;
   }
 
   byId('cfg-status').textContent = 'Проверяю…';
   try {
-    // 1. виден ли репозиторий и в какой ветке искать
     const repo = await ghRepo();
     const cfg = LS.cfg;
     cfg.branch = repo.default_branch || 'main';
     LS.cfg = cfg;
 
-    // 2. есть ли выложенное состояние
     let state = await ghGet('state.json');
-
-    // компьютер мог записать в другую ветку — проверим и её
     if (!state && cfg.branch !== 'main') {
-      cfg.branch = 'main';
-      LS.cfg = cfg;
+      cfg.branch = 'main'; LS.cfg = cfg;
       state = await ghGet('state.json');
       if (!state) { cfg.branch = repo.default_branch || 'main'; LS.cfg = cfg; }
     }
 
     if (!state) {
-      byId('cfg-status').textContent =
-        'Репозиторий ' + repo.full_name + ' виден, ветка ' + cfg.branch +
-        ', но файла state.json в нём нет. Нажмите «Синхронизировать сейчас» в приложении на компьютере — ' +
-        'и проверьте, что там указан тот же репозиторий.';
+      byId('cfg-status').textContent = 'Репозиторий ' + repo.full_name + ' виден, ветка ' + cfg.branch +
+        ', но файла state.json нет. Нажмите «Синхронизировать сейчас» на компьютере.';
       return;
     }
 
     LS.state = JSON.parse(state.text);
-    const months = (LS.state.months || []).length;
-    byId('cfg-status').textContent = 'Готово: данные на месте, месяцев в истории — ' + months + '.';
+    byId('cfg-status').textContent = 'Готово: месяцев в истории — ' + (LS.state.months || []).length + '.';
     byId('sheet-settings').classList.remove('open');
     refresh(true);
   } catch (e) {
@@ -656,15 +1087,20 @@ async function saveSettings() {
   }
 }
 
-// ─────────────────────────── события ───────────────────────────
+// ═══════════════════════ события ═══════════════════════
 
 byId('btn-add').onclick = openAdd;
 byId('btn-refresh').onclick = () => refresh(false);
 byId('btn-settings').onclick = openSettings;
 byId('add-close').onclick = byId('add-cancel').onclick = () => byId('sheet-add').classList.remove('open');
+byId('forecast-close').onclick = () => byId('sheet-forecast').classList.remove('open');
 byId('settings-close').onclick = () => byId('sheet-settings').classList.remove('open');
 byId('add-save').onclick = saveOperation;
+byId('add-delete').onclick = deleteOperation;
 byId('cfg-save').onclick = saveSettings;
+byId('forecast-topup').oninput = recalcForecast;
+byId('forecast-day').oninput = recalcForecast;
+
 byId('cfg-forget').onclick = () => {
   if (confirm('Удалить настройки подключения с этого устройства?')) {
     localStorage.clear();
@@ -672,18 +1108,38 @@ byId('cfg-forget').onclick = () => {
   }
 };
 
+byId('month-prev').onclick = async () => {
+  const months = knownMonths();
+  const i = months.indexOf(currentMonth);
+  if (i > 0) {
+    currentMonth = months[i - 1];
+    render();
+    try { await loadMonth(currentMonth); render(); } catch (e) { showBanner(e.message, true); }
+  }
+};
+
+byId('month-next').onclick = async () => {
+  const months = knownMonths();
+  const i = months.indexOf(currentMonth);
+  if (i >= 0 && i < months.length - 1) {
+    currentMonth = months[i + 1];
+    render();
+    try { await loadMonth(currentMonth); render(); } catch (e) { showBanner(e.message, true); }
+  }
+};
+
 byId('add-amount').oninput = () => {
-  const value = evalAmount(byId('add-amount').value);
   const raw = byId('add-amount').value;
+  const value = evalAmount(raw);
   byId('add-hint').textContent = !raw ? 'Можно ввести выражение: 450+120*2'
     : (value > 0 ? (/[+\-*/()]/.test(raw) ? '= ' + money(value) : ' ') : 'Не похоже на сумму');
 };
 
-document.querySelectorAll('#sheet-add .tabs button').forEach(button => {
+byId('add-tabs').querySelectorAll('button').forEach(button => {
   button.onclick = () => {
     addKind = Number(button.dataset.kind);
     addCategoryId = null;
-    document.querySelectorAll('#sheet-add .tabs button').forEach(b => b.classList.toggle('active', b === button));
+    setKindTabs(addKind);
     fillCategories();
     applyKind();
   };
@@ -691,9 +1147,7 @@ document.querySelectorAll('#sheet-add .tabs button').forEach(button => {
 
 window.addEventListener('online', () => flushQueue().then(render).catch(() => {}));
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
-}
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 render();
 refresh(true);
