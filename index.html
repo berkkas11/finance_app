@@ -10,9 +10,27 @@
 <style>
   :root {
     --primary: #31A075; --primary-dark: #27865F; --primary-light: #4FBE93;
+    --header-from: #4FBE93; --header-to: #27865F; --header-muted: #CDEDDF;
     --bg: #F3F6F4; --card: #FFFFFF; --border: #E5ECE8;
     --text: #1B2A25; --text2: #61736C; --muted: #97A6A0;
     --expense: #E2564F; --income: #2E9E68; --accent: #F3B73F;
+    --track: #EDF2F0; --selected: #E8F5EF; --shadow: rgba(0,0,0,.05);
+    --notice-bg: #FDF4DC; --notice-border: #F2E0AE; --notice-text: #6B5412;
+    --bad-bg: #FDECEA; --bad-border: #F5C6C2; --bad-text: #8B2E28;
+    color-scheme: light;
+  }
+
+  /* тёмная тема: те же цвета, что и в приложении на компьютере */
+  :root[data-theme="dark"] {
+    --primary: #3BB083; --primary-dark: #2E8E68; --primary-light: #54C79A;
+    --header-from: #2E8E68; --header-to: #1B5E45; --header-muted: #B9DDCC;
+    --bg: #131815; --card: #1B221E; --border: #2A322D;
+    --text: #E8EFEA; --text2: #A8B5AE; --muted: #7C8A83;
+    --expense: #FF6F66; --income: #46C489; --accent: #F3B73F;
+    --track: #262E29; --selected: #23362E; --shadow: rgba(0,0,0,.35);
+    --notice-bg: #2C2718; --notice-border: #453B21; --notice-text: #E8D9A8;
+    --bad-bg: #351E1C; --bad-border: #57302C; --bad-text: #FFA69E;
+    color-scheme: dark;
   }
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -23,7 +41,7 @@
   }
 
   header {
-    background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
+    background: linear-gradient(135deg, var(--header-from), var(--header-to));
     color: #fff; padding: calc(14px + env(safe-area-inset-top)) 18px 16px;
   }
 
@@ -32,9 +50,9 @@
                   padding: 7px 12px; border-radius: 9px; margin-left: 6px; }
 
   .balance { text-align: center; margin-top: 14px; }
-  .balance .caption { font-size: 11px; letter-spacing: .04em; color: #CDEDDF; }
+  .balance .caption { font-size: 11px; letter-spacing: .04em; color: var(--header-muted); }
   .balance .value { font-size: 32px; font-weight: 700; margin-top: 2px; }
-  .balance .stats { font-size: 12.5px; color: #DCF0E7; margin-top: 6px; }
+  .balance .stats { font-size: 12.5px; color: var(--header-muted); margin-top: 6px; }
 
   .monthbar { display: flex; align-items: center; justify-content: center; gap: 14px;
               margin-top: 12px; font-size: 14px; font-weight: 600; }
@@ -46,7 +64,7 @@
   main { padding: 14px 14px calc(94px + env(safe-area-inset-bottom)); }
 
   .card { background: var(--card); border-radius: 16px; padding: 14px; margin-bottom: 12px;
-          box-shadow: 0 1px 10px rgba(0,0,0,.05); }
+          box-shadow: 0 1px 10px var(--shadow); }
   .card h3 { margin: 0 0 10px; font-size: 14.5px; }
 
   .row { display: flex; align-items: center; gap: 11px; padding: 9px 2px; }
@@ -66,7 +84,7 @@
               display: flex; justify-content: space-between; }
   .daygroup span { color: var(--muted); font-weight: 400; }
 
-  .track { height: 6px; border-radius: 3px; background: #EDF2F0; margin-top: 7px; overflow: hidden; }
+  .track { height: 6px; border-radius: 3px; background: var(--track); margin-top: 7px; overflow: hidden; }
   .track div { height: 100%; border-radius: 3px; background: var(--primary); }
 
   .fab { position: fixed; right: 18px; bottom: calc(78px + env(safe-area-inset-bottom));
@@ -87,7 +105,7 @@
   .sheet .content { padding: 16px 14px calc(30px + env(safe-area-inset-bottom)); }
 
   .tabs { display: flex; gap: 6px; margin-top: 12px; }
-  .tabs button { flex: 1; background: rgba(255,255,255,.18); border: 0; color: #CDEDDF;
+  .tabs button { flex: 1; background: rgba(255,255,255,.18); border: 0; color: var(--header-muted);
                  padding: 9px 0; border-radius: 10px; font-size: 13px; font-weight: 600; }
   .tabs button.active { background: #fff; color: var(--primary-dark); }
 
@@ -107,7 +125,7 @@
   .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 8px; }
   .tile { background: var(--card); border: 2px solid transparent; border-radius: 14px;
           padding: 10px 4px; text-align: center; font-size: 11.5px; }
-  .tile.sel { border-color: var(--primary); background: #E8F5EF; }
+  .tile.sel { border-color: var(--primary); background: var(--selected); }
   .tile .badge { margin: 0 auto 6px; }
   .tile div.name { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 
@@ -115,11 +133,11 @@
          font-size: 15px; font-weight: 600; margin-top: 14px; }
   .btn.primary { background: var(--primary); color: #fff; }
   .btn.ghost { background: transparent; color: var(--text2); border: 1.4px solid var(--border); }
-  .btn.danger { background: transparent; color: var(--expense); border: 1.4px solid #F3D0CE; }
+  .btn.danger { background: transparent; color: var(--expense); border: 1.4px solid var(--border); }
 
-  .banner { background: #FDF4DC; border: 1px solid #F2E0AE; color: #6B5412;
+  .banner { background: var(--notice-bg); border: 1px solid var(--notice-border); color: var(--notice-text);
             border-radius: 12px; padding: 10px 12px; font-size: 12.5px; margin-bottom: 12px; }
-  .banner.bad { background: #FDECEA; border-color: #F5C6C2; color: #8B2E28; }
+  .banner.bad { background: var(--bad-bg); border-color: var(--bad-border); color: var(--bad-text); }
   .muted { color: var(--muted); font-size: 12.5px; }
   .center { text-align: center; padding: 30px 10px; }
   .split { display: flex; gap: 10px; }
@@ -224,7 +242,14 @@
 <section class="sheet" id="sheet-settings">
   <header><div class="brand"><span>Подключение</span><button id="settings-close">Закрыть</button></div></header>
   <div class="content">
-    <div class="muted">Те же данные, что в приложении на компьютере: «Ещё» → «Синхронизация с телефоном».</div>
+    <label class="field">ОФОРМЛЕНИЕ</label>
+    <div class="chips" id="cfg-theme">
+      <button data-theme="light">Светлая</button>
+      <button data-theme="dark">Тёмная</button>
+      <button data-theme="system">Как в системе</button>
+    </div>
+
+    <div class="muted" style="margin-top:16px">Те же данные, что в приложении на компьютере: «Ещё» → «Синхронизация с телефоном».</div>
 
     <label class="field">ВЛАДЕЛЕЦ (логин на GitHub)</label>
     <input id="cfg-owner" autocapitalize="none" autocorrect="off" spellcheck="false">
@@ -1032,8 +1057,37 @@ function recalcForecast() {
 
 // ═══════════════════════ настройки ═══════════════════════
 
+// ═══════════════════════ оформление ═══════════════════════
+
+const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+function applyTheme() {
+  const mode = LS.cfg.theme || 'system';
+  const dark = mode === 'dark' || (mode === 'system' && darkQuery.matches);
+
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', dark ? '#2E8E68' : '#31A075');
+
+  document.querySelectorAll('#cfg-theme button').forEach(b =>
+    b.classList.toggle('active', b.dataset.theme === mode));
+}
+
+darkQuery.addEventListener('change', () => { if ((LS.cfg.theme || 'system') === 'system') applyTheme(); });
+
+document.querySelectorAll('#cfg-theme button').forEach(button => {
+  button.onclick = () => {
+    const cfg = LS.cfg;
+    cfg.theme = button.dataset.theme;
+    LS.cfg = cfg;
+    applyTheme();
+  };
+});
+
 function openSettings() {
   const cfg = LS.cfg;
+  applyTheme();
   byId('cfg-owner').value = cfg.owner || '';
   // подставляем значением, а не подсказкой: серый текст легко принять за заполненное
   byId('cfg-repo').value = cfg.repo || 'finance_data';
@@ -1043,11 +1097,12 @@ function openSettings() {
 }
 
 async function saveSettings() {
-  LS.cfg = {
+  // дополняем, а не заменяем: в настройках лежат ещё тема и ветка
+  LS.cfg = Object.assign({}, LS.cfg, {
     owner: byId('cfg-owner').value.trim(),
     repo: byId('cfg-repo').value.trim(),
     token: byId('cfg-token').value.trim(),
-  };
+  });
 
   const missing = [];
   if (!LS.cfg.owner) missing.push('логин');
@@ -1149,6 +1204,7 @@ window.addEventListener('online', () => flushQueue().then(render).catch(() => {}
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
+applyTheme();
 render();
 refresh(true);
 </script>
