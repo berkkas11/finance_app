@@ -1,6 +1,6 @@
 // Кеш оболочки приложения: страница открывается и без сети.
 // Запросы к GitHub никогда не кешируем — данные должны быть свежими.
-const CACHE = 'fw-shell-v3';
+const CACHE = 'fw-shell-v4';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', event => {

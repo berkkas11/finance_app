@@ -138,6 +138,7 @@
   .banner { background: var(--notice-bg); border: 1px solid var(--notice-border); color: var(--notice-text);
             border-radius: 12px; padding: 10px 12px; font-size: 12.5px; margin-bottom: 12px; }
   .banner.bad { background: var(--bad-bg); border-color: var(--bad-border); color: var(--bad-text); }
+  .banner.tappable { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
   .muted { color: var(--muted); font-size: 12.5px; }
   .center { text-align: center; padding: 30px 10px; }
   .split { display: flex; gap: 10px; }
@@ -335,6 +336,22 @@ async function ghPut(path, text, message) {
   });
   if (!r.ok) throw new Error('GitHub ' + r.status);
   return r.json();
+}
+
+/** Имена файлов в папке репозитория; нет папки — пустой список. */
+async function ghList(dir) {
+  const c = LS.cfg;
+  const ref = c.branch ? '&ref=' + encodeURIComponent(c.branch) : '';
+  const r = await fetch(api(dir) + '?t=' + Date.now() + ref, {
+    headers: { Authorization: 'Bearer ' + c.token, Accept: 'application/vnd.github+json' },
+    cache: 'no-store',
+  });
+
+  if (r.status === 404) return [];
+  if (!r.ok) throw new Error('GitHub ' + r.status);
+
+  const j = await r.json();
+  return Array.isArray(j) ? j.map(f => f.name) : [];
 }
 
 // GitHub отвечает 404 и на «нет файла», и на «репозиторий не виден токену» —
@@ -557,21 +574,29 @@ const recordMonth = item => item.action === 'delete'
  * создали и тут же удалили, порознь удаление выглядит применённым (в данных с ПК
  * его и не было), а создание — нет, и операция возвращалась бы в список.
  */
-function reconcileSent() {
+/** Столько ждём между «компьютер забрал файл» и «компьютер выложил результат». */
+const SETTLE_GRACE_MS = 3 * 60 * 1000;
+
+function reconcileSent(inbox) {
   const sent = LS.sent;
   if (!sent.length) return;
 
   // по этим операциям есть ещё не отправленное — их черёд не настал
   const queued = new Set(LS.queue.map(recordOpId));
 
-  const last = new Map();                               // операция → её последняя запись
-  for (const item of sent) last.set(recordOpId(item), item);
+  const byOp = new Map();                               // операция → все её записи по порядку
+  for (const item of sent) {
+    const id = recordOpId(item);
+    if (!byOp.has(id)) byOp.set(id, []);
+    byOp.get(id).push(item);
+  }
 
   const settled = new Set();
 
-  for (const [id, item] of last) {
+  for (const [id, records] of byOp) {
     if (queued.has(id)) continue;
 
+    const item = records[records.length - 1];           // итог решает последняя запись
     const month = LS.months[recordMonth(item)];
     if (!month) continue;                               // месяц не загружен — судить не по чему
 
@@ -580,7 +605,18 @@ function reconcileSent() {
       ? !stored
       : (stored && signature(stored) === signature(item.op));
 
-    if (applied) settled.add(id);
+    if (applied) { settled.add(id); continue; }
+
+    // Компьютер забрал все наши файлы по этой операции, выложил данные, а изменения
+    // в них нет: запись либо перекрыта более поздней, либо отклонена. Держать её в
+    // «ждёт компьютера» бессмысленно — честнее показывать то, что есть на самом деле.
+    if (!inbox) continue;
+
+    const taken = records.every(r => !inbox.has(r.id + '.json'));
+    const settledLongAgo = records.every(r =>
+      !r.createdUtc || Date.now() - Date.parse(r.createdUtc) > SETTLE_GRACE_MS);
+
+    if (taken && settledLongAgo) settled.add(id);
   }
 
   LS.sent = sent.filter(item => !settled.has(recordOpId(item)));
@@ -589,6 +625,21 @@ function reconcileSent() {
 /** Месяцы, по которым ещё ждём подтверждения от компьютера. */
 function pendingMonths() {
   return new Set(LS.sent.map(recordMonth));
+}
+
+/**
+ * Аварийный выход: перестать ждать компьютер. Сами операции уже уехали во входящие
+ * и никуда не денутся — телефон просто перестаёт показывать их отдельно и начинает
+ * верить выложенным данным.
+ */
+function forgetSent() {
+  if (!LS.sent.length) return;
+  if (!confirm('Перестать ждать компьютер по ' + LS.sent.length + ' записи(ям)?\n\n' +
+               'Операции останутся во входящих и применятся, когда компьютер включится. ' +
+               'Телефон будет показывать то, что уже выложено.')) return;
+
+  LS.sent = [];
+  render();
 }
 
 function knownMonths() {
@@ -624,7 +675,11 @@ async function refresh(silent) {
     for (const ym of pendingMonths())
       if (ym !== currentMonth) await loadMonth(ym, true);
 
-    reconcileSent();
+    // что ещё лежит во входящих — по этому видно, забрал компьютер наши файлы или нет
+    let inbox = null;
+    try { inbox = new Set(await ghList('inbox')); } catch (e) { inbox = null; }
+
+    reconcileSent(inbox);
     render();
   } catch (e) {
     if (!silent) showBanner(e.message, true);
@@ -714,10 +769,12 @@ function render() {
     if (queue.length) parts.push('ждут отправки: ' + queue.length);
     if (sent.length) parts.push('ждут компьютера: ' + sent.length);
 
-    byId('pending-banner').className = 'banner';
+    byId('pending-banner').className = 'banner' + (sent.length ? ' tappable' : '');
     byId('pending-banner').textContent = parts.join(', ') +
-      '. Итоги ниже уже с их учётом.';
+      '. Итоги ниже уже с их учётом.' +
+      (sent.length ? ' Нажмите, если висит дольше обычного.' : '');
   }
+  byId('pending-banner').onclick = sent.length ? forgetSent : null;
 
   byId('btn-add').style.display = screen === 'ops' ? 'block' : 'none';
   byId('monthbar').style.display = (screen === 'ops' || screen === 'report') ? 'flex' : 'none';
@@ -936,6 +993,7 @@ function showBanner(text, bad) {
   el.style.display = 'block';
   el.className = 'banner' + (bad ? ' bad' : '');
   el.textContent = text;
+  el.onclick = null;                    // на плашке сейчас не счётчик ожидания
 }
 
 // ═══════════════════════ операция: создание и правка ═══════════════════════
