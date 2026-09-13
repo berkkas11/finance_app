@@ -3,33 +3,34 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#31A075">
+<meta name="theme-color" content="#F6F3EE">
 <title>Финансы</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
+  /* Те же цвета, что и в приложении на компьютере: тёплая песочная база,
+     единственный акцент — жжёная охра. Шапка не заливка, а тот же фон с линией. */
   :root {
-    --primary: #31A075; --primary-dark: #27865F; --primary-light: #4FBE93;
-    --header-from: #4FBE93; --header-to: #27865F; --header-muted: #CDEDDF;
-    --bg: #F3F6F4; --card: #FFFFFF; --border: #E5ECE8;
-    --text: #1B2A25; --text2: #61736C; --muted: #97A6A0;
-    --expense: #E2564F; --income: #2E9E68; --accent: #F3B73F;
-    --track: #EDF2F0; --selected: #E8F5EF; --shadow: rgba(0,0,0,.05);
-    --notice-bg: #FDF4DC; --notice-border: #F2E0AE; --notice-text: #6B5412;
-    --bad-bg: #FDECEA; --bad-border: #F5C6C2; --bad-text: #8B2E28;
+    --primary: #9C5B2E; --primary-dark: #7F4822; --primary-light: #C07B47;
+    --header-from: #F6F3EE; --header-to: #F6F3EE; --header-muted: #6B6154;
+    --bg: #F6F3EE; --card: #FFFDFA; --border: #E7E0D5;
+    --text: #211D18; --text2: #6B6154; --muted: #9C9283;
+    --expense: #CC5A4A; --income: #62905A; --accent: #D9A441;
+    --track: #EBE4D9; --selected: #F4E7D6; --shadow: rgba(60,45,25,.06);
+    --notice-bg: #FAF0DD; --notice-border: #EBDCBC; --notice-text: #6A5423;
+    --bad-bg: #FBEAE6; --bad-border: #F0CCC4; --bad-text: #8C3A2C;
     color-scheme: light;
   }
 
-  /* тёмная тема: те же цвета, что и в приложении на компьютере */
   :root[data-theme="dark"] {
-    --primary: #3BB083; --primary-dark: #2E8E68; --primary-light: #54C79A;
-    --header-from: #2E8E68; --header-to: #1B5E45; --header-muted: #B9DDCC;
-    --bg: #131815; --card: #1B221E; --border: #2A322D;
-    --text: #E8EFEA; --text2: #A8B5AE; --muted: #7C8A83;
-    --expense: #FF6F66; --income: #46C489; --accent: #F3B73F;
-    --track: #262E29; --selected: #23362E; --shadow: rgba(0,0,0,.35);
-    --notice-bg: #2C2718; --notice-border: #453B21; --notice-text: #E8D9A8;
-    --bad-bg: #351E1C; --bad-border: #57302C; --bad-text: #FFA69E;
+    --primary: #D4884A; --primary-dark: #B16F3A; --primary-light: #E4A06A;
+    --header-from: #191614; --header-to: #191614; --header-muted: #B3A899;
+    --bg: #191614; --card: #211D19; --border: #322C26;
+    --text: #F0EAE1; --text2: #B3A899; --muted: #877C6E;
+    --expense: #F07A68; --income: #86B06E; --accent: #E4B45C;
+    --track: #2A251F; --selected: #342A1D; --shadow: rgba(0,0,0,.35);
+    --notice-bg: #2A2318; --notice-border: #443A26; --notice-text: #E8D9A8;
+    --bad-bg: #34211C; --bad-border: #57352C; --bad-text: #FFA69E;
     color-scheme: dark;
   }
 
@@ -41,25 +42,26 @@
   }
 
   header {
-    background: linear-gradient(135deg, var(--header-from), var(--header-to));
-    color: #fff; padding: calc(14px + env(safe-area-inset-top)) 18px 16px;
+    background: var(--bg); color: var(--text);
+    border-bottom: 1px solid var(--border);
+    padding: calc(14px + env(safe-area-inset-top)) 18px 14px;
   }
 
   .brand { display: flex; align-items: center; justify-content: space-between; font-size: 15px; font-weight: 600; }
-  .brand button { background: rgba(255,255,255,.2); border: 0; color: #fff; font-size: 13px;
-                  padding: 7px 12px; border-radius: 9px; margin-left: 6px; }
+  .brand button { background: transparent; border: 1.4px solid var(--border); color: var(--text2);
+                  font-size: 13px; padding: 7px 12px; border-radius: 10px; margin-left: 6px; }
 
-  .balance { text-align: center; margin-top: 14px; }
-  .balance .caption { font-size: 11px; letter-spacing: .04em; color: var(--header-muted); }
-  .balance .value { font-size: 32px; font-weight: 700; margin-top: 2px; }
-  .balance .stats { font-size: 12.5px; color: var(--header-muted); margin-top: 6px; }
+  .balance { margin-top: 18px; }
+  .balance .caption { font-size: 10.5px; letter-spacing: .05em; font-weight: 600; color: var(--muted); }
+  .balance .value { font-size: 34px; font-weight: 700; margin-top: 3px; letter-spacing: -.01em; }
+  .balance .stats { font-size: 12.5px; color: var(--text2); margin-top: 8px; }
 
-  .monthbar { display: flex; align-items: center; justify-content: center; gap: 14px;
-              margin-top: 12px; font-size: 14px; font-weight: 600; }
-  .monthbar button { background: rgba(255,255,255,.2); border: 0; color: #fff;
+  .monthbar { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+              margin-top: 16px; font-size: 14px; font-weight: 600; }
+  .monthbar button { background: transparent; border: 1.4px solid var(--border); color: var(--text2);
                      width: 32px; height: 32px; border-radius: 16px; font-size: 16px; line-height: 1; }
   .monthbar button[disabled] { opacity: .35; }
-  .monthbar span { min-width: 150px; text-align: center; }
+  .monthbar span { flex: 1; text-align: center; }
 
   main { padding: 14px 14px calc(94px + env(safe-area-inset-bottom)); }
 
@@ -105,9 +107,9 @@
   .sheet .content { padding: 16px 14px calc(30px + env(safe-area-inset-bottom)); }
 
   .tabs { display: flex; gap: 6px; margin-top: 12px; }
-  .tabs button { flex: 1; background: rgba(255,255,255,.18); border: 0; color: var(--header-muted);
+  .tabs button { flex: 1; background: transparent; border: 1.4px solid var(--border); color: var(--text2);
                  padding: 9px 0; border-radius: 10px; font-size: 13px; font-weight: 600; }
-  .tabs button.active { background: #fff; color: var(--primary-dark); }
+  .tabs button.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
   .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
   .chips button { background: var(--card); border: 1.4px solid var(--border); color: var(--text2);
@@ -434,14 +436,28 @@ function dayTitle(isoDay) {
   return text;
 }
 
-function icon(key, color, size) {
-  const d = (LS.icons || {})[key] || (LS.icons || {})['dots'] || {};
+/**
+ * Кружок категории. Рисунки приходят с компьютера в icons.json; пока их нет —
+ * например, при первом запуске или если на компьютере набор новее — в кружке
+ * показываем первую букву названия. Пустым он не остаётся никогда.
+ */
+function icon(key, color, size, label) {
+  const set = LS.icons || {};
+  const d = set[key] || set['dots'] || {};
+
   let inner = '';
   if (d.stroke) inner += '<path d="' + d.stroke + '" fill="none" stroke="#fff" stroke-width="' +
-    (d.width || 1.8) + '" stroke-linecap="round" stroke-linejoin="round"/>';
+    (d.width || 1.7) + '" stroke-linecap="round" stroke-linejoin="round"/>';
   if (d.fill) inner += '<path d="' + d.fill + '" fill="#fff"/>';
+
+  if (!inner) {
+    const letter = (String(label || '').trim()[0] || '?').toUpperCase();
+    inner = '<text x="12" y="12" fill="#fff" font-size="12" font-weight="600" font-family="inherit" ' +
+            'text-anchor="middle" dominant-baseline="central">' + esc(letter) + '</text>';
+  }
+
   const style = size ? ' style="width:' + size + 'px;height:' + size + 'px;flex-basis:' + size + 'px"' : '';
-  return '<div class="badge"' + style + ' data-c="' + (color || '#9AA8A2') + '">' +
+  return '<div class="badge"' + style + ' data-c="' + (color || '#9C9283') + '">' +
          '<svg viewBox="0 0 24 24">' + inner + '</svg></div>';
 }
 
@@ -821,7 +837,7 @@ function opRowHtml(op) {
   const amount = transfer ? money(op.Amount) : (op.Kind === 1 ? '+' : '−') + money(op.Amount);
   const tint = transfer ? 'var(--text2)' : (op.Kind === 1 ? 'var(--income)' : 'var(--expense)');
 
-  return '<div class="row" data-op="' + esc(op.Id) + '">' + icon(key, color) +
+  return '<div class="row" data-op="' + esc(op.Id) + '">' + icon(key, color, 0, title) +
     '<div class="body"><div class="title">' + esc(title) + '</div>' +
     (op.Note ? '<div class="note">' + esc(op.Note) + '</div>' : '') +
     '</div><div><div class="amount" style="color:' + tint + '">' + amount + '</div>' +
@@ -882,7 +898,7 @@ function renderReport(ops) {
 
     for (const [id, sum] of rows) {
       const cat = categories[id];
-      html += '<div class="row">' + icon(cat?.Icon || 'dots', cat?.Color || '#9AA8A2', 34) +
+      html += '<div class="row">' + icon(cat?.Icon || 'dots', cat?.Color || '#9C9283', 34, cat?.Name) +
         '<div class="body"><div class="title">' + esc(cat?.Name || 'Без категории') +
         '<span class="muted" style="float:right">' + percent(sum / total) + '</span></div>' +
         '<div class="track"><div style="width:' + (sum / max * 100) + '%;background:' +
@@ -905,7 +921,7 @@ function renderAccounts() {
     const savings = acc.Kind === 1;
 
     html += '<div class="row" ' + (savings ? 'data-forecast="' + esc(acc.Id) + '"' : '') + '>' +
-      icon(acc.Icon, acc.Color) +
+      icon(acc.Icon, acc.Color, 0, acc.Name) +
       '<div class="body"><div class="title">' + esc(acc.Name) + '</div>' +
       '<div class="note">' + (savings
         ? 'вклад ' + rateText(acc.AnnualRate) + ' · капитализация ' +
@@ -966,7 +982,7 @@ function renderBudgets() {
     const over = spent > b.Limit;
     const color = over ? 'var(--expense)' : share > 0.85 ? 'var(--accent)' : 'var(--primary)';
 
-    html += '<div class="row">' + icon(cat?.Icon || 'dots', cat?.Color || '#9AA8A2', 34) +
+    html += '<div class="row">' + icon(cat?.Icon || 'dots', cat?.Color || '#9C9283', 34, cat?.Name) +
       '<div class="body"><div class="title">' + esc(cat?.Name || '—') +
       '<span class="muted" style="float:right">' + periodName(b.Period) + '</span></div>' +
       '<div class="track"><div style="width:' + (share * 100) + '%;background:' + color + '"></div></div>' +
@@ -1066,7 +1082,7 @@ function fillCategories() {
   const cats = (LS.state.categories || []).filter(c => c.Kind === addKind && (!c.Archived || c.Id === addCategoryId));
   byId('add-categories').innerHTML = cats.map(c =>
     '<div class="tile' + (c.Id === addCategoryId ? ' sel' : '') + '" data-id="' + esc(c.Id) + '">' +
-    icon(c.Icon, c.Color) + '<div class="name">' + esc(c.Name) + '</div></div>').join('');
+    icon(c.Icon, c.Color, 0, c.Name) + '<div class="name">' + esc(c.Name) + '</div></div>').join('');
 
   paintBadges(byId('add-categories'));
 
@@ -1430,7 +1446,7 @@ function applyTheme() {
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
 
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', dark ? '#2E8E68' : '#31A075');
+  if (meta) meta.setAttribute('content', dark ? '#191614' : '#F6F3EE');
 
   document.querySelectorAll('#cfg-theme button').forEach(b =>
     b.classList.toggle('active', b.dataset.theme === mode));
