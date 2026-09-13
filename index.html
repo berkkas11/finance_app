@@ -1258,10 +1258,19 @@ function accountTimeline(accountId, from) {
   return { opening: accountBalance(accountId) - ahead, deltas };
 }
 
-// Когда набежавшее за этот день попадёт на счёт.
-function payoutDate(account, day) {
+// Час, к которому банк уже провёл начисление; до него деньги на счёте не появляются.
+const PAYOUT_HOUR = 17;
+
+// Последний день расчётного периода, в который попадает указанный день.
+function periodEnd(account, day) {
   if (account.Capitalization === 1) return new Date(day.getTime());
   return new Date(day.getFullYear(), day.getMonth(), daysInMonth(day.getFullYear(), day.getMonth()));
+}
+
+// Когда набежавшее реально появится на счёте: на следующий день после конца периода.
+function payoutDate(account, day) {
+  const end = periodEnd(account, day);
+  return new Date(end.getTime() + 86400000);
 }
 
 function computeForecast(account, startBalance, until, topUp, topUpDay) {
@@ -1374,21 +1383,20 @@ function renderNearTerm(account, balance, topUp, topUpDay) {
     const timeline = accountTimeline(account.Id, from);
     const amount = accruedOver(account, timeline.opening, from, to, topUp, topUpDay, timeline.deltas);
 
-    // подпись «зачислится» уместна, только когда весь период внутри одного месяца:
-    // за более длинные сроки проценты падают на счёт месяц за месяцем
+    // подпись «зачислится» уместна, только когда весь срок укладывается в один
+    // расчётный период: за более длинные сроки деньги падают на счёт частями
     const payout = payoutDate(account, to);
-    const sameMonth = from.getFullYear() === to.getFullYear() && from.getMonth() === to.getMonth();
 
-    const note = account.Capitalization !== 1 && payout > to && sameMonth
-      ? '<div class="note">зачислится ' + shortDate(payout) + '</div>' : '';
+    const note = payoutDate(account, from).getTime() === payout.getTime()
+      ? '<div class="note">зачислится ' + shortDate(payout) + ' к ' + PAYOUT_HOUR + ':00</div>' : '';
 
     html += '<div class="row"><div class="body"><div class="title">' + label + '</div>' + note + '</div>' +
       '<div class="amount" style="color:var(--income)">+' + money(amount) + '</div></div>';
   }
 
-  if (account.Capitalization !== 1)
-    html += '<div class="muted" style="margin-top:10px">Здесь заработанное. ' +
-      'В «будет на счёте» ниже попадает только то, что банк успел зачислить в конце месяца.</div>';
+  html += '<div class="muted" style="margin-top:10px">Здесь заработанное. Банк проводит ' +
+    'начисление днём, поэтому на счёте деньги появляются на следующий день к ' +
+    PAYOUT_HOUR + ':00.</div>';
 
   box.innerHTML = html + '</div>';
 }
