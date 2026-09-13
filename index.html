@@ -1261,16 +1261,17 @@ function accountTimeline(accountId, from) {
 // Час, к которому банк уже провёл начисление; до него деньги на счёте не появляются.
 const PAYOUT_HOUR = 17;
 
-// Последний день расчётного периода, в который попадает указанный день.
-function periodEnd(account, day) {
-  if (account.Capitalization === 1) return new Date(day.getTime());
+// Когда набежавшее появится на счёте — в конце расчётного периода: в тот же день
+// при ежедневной капитализации, в последний день месяца при ежемесячной.
+function payoutDate(account, day) {
+  if (account.Capitalization === 1) return new Date(day.getFullYear(), day.getMonth(), day.getDate());
   return new Date(day.getFullYear(), day.getMonth(), daysInMonth(day.getFullYear(), day.getMonth()));
 }
 
-// Когда набежавшее реально появится на счёте: на следующий день после конца периода.
-function payoutDate(account, day) {
-  const end = periodEnd(account, day);
-  return new Date(end.getTime() + 86400000);
+// Точный момент зачисления — дата плюс час начисления.
+function payoutMoment(account, day) {
+  const d = payoutDate(account, day);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), PAYOUT_HOUR);
 }
 
 function computeForecast(account, startBalance, until, topUp, topUpDay) {
@@ -1384,10 +1385,11 @@ function renderNearTerm(account, balance, topUp, topUpDay) {
     const amount = accruedOver(account, timeline.opening, from, to, topUp, topUpDay, timeline.deltas);
 
     // подпись «зачислится» уместна, только когда весь срок укладывается в один
-    // расчётный период: за более длинные сроки деньги падают на счёт частями
+    // расчётный период и час зачисления ещё не прошёл
     const payout = payoutDate(account, to);
+    const onePayment = payoutDate(account, from).getTime() === payout.getTime();
 
-    const note = payoutDate(account, from).getTime() === payout.getTime()
+    const note = onePayment && payoutMoment(account, to) > new Date()
       ? '<div class="note">зачислится ' + shortDate(payout) + ' к ' + PAYOUT_HOUR + ':00</div>' : '';
 
     html += '<div class="row"><div class="body"><div class="title">' + label + '</div>' + note + '</div>' +
@@ -1395,8 +1397,7 @@ function renderNearTerm(account, balance, topUp, topUpDay) {
   }
 
   html += '<div class="muted" style="margin-top:10px">Здесь заработанное. Банк проводит ' +
-    'начисление днём, поэтому на счёте деньги появляются на следующий день к ' +
-    PAYOUT_HOUR + ':00.</div>';
+    'начисление днём, поэтому на счёте деньги появляются к ' + PAYOUT_HOUR + ':00.</div>';
 
   box.innerHTML = html + '</div>';
 }
