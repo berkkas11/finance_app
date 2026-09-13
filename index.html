@@ -544,27 +544,51 @@ function signature(op) {
           op.ToAccountId || '', String(op.Date).slice(0, 10), (op.Note || '').trim()].join('|');
 }
 
+const recordOpId = item => item.action === 'delete' ? item.opId : item.op.Id;
+
+const recordMonth = item => item.action === 'delete'
+  ? (item.month || monthKey(item.prev ? item.prev.Date : todayISO()))
+  : monthKey(item.op.Date);
+
+/**
+ * Убирает записи, которые компьютер уже применил.
+ *
+ * Судим по итогу на операцию, а не по каждой записи отдельно: если операцию
+ * создали и тут же удалили, порознь удаление выглядит применённым (в данных с ПК
+ * его и не было), а создание — нет, и операция возвращалась бы в список.
+ */
 function reconcileSent() {
-  const rest = [];
+  const sent = LS.sent;
+  if (!sent.length) return;
 
-  for (const item of LS.sent) {
-    const id = item.action === 'delete' ? item.opId : item.op.Id;
-    const ym = item.action === 'delete'
-      ? (item.month || monthKey(item.prev ? item.prev.Date : todayISO()))
-      : monthKey(item.op.Date);
+  // по этим операциям есть ещё не отправленное — их черёд не настал
+  const queued = new Set(LS.queue.map(recordOpId));
 
-    const month = LS.months[ym];
-    if (!month) { rest.push(item); continue; }          // месяц не загружен — судить не по чему
+  const last = new Map();                               // операция → её последняя запись
+  for (const item of sent) last.set(recordOpId(item), item);
+
+  const settled = new Set();
+
+  for (const [id, item] of last) {
+    if (queued.has(id)) continue;
+
+    const month = LS.months[recordMonth(item)];
+    if (!month) continue;                               // месяц не загружен — судить не по чему
 
     const stored = (month.operations || []).find(o => o.Id === id);
     const applied = item.action === 'delete'
       ? !stored
       : (stored && signature(stored) === signature(item.op));
 
-    if (!applied) rest.push(item);
+    if (applied) settled.add(id);
   }
 
-  LS.sent = rest;
+  LS.sent = sent.filter(item => !settled.has(recordOpId(item)));
+}
+
+/** Месяцы, по которым ещё ждём подтверждения от компьютера. */
+function pendingMonths() {
+  return new Set(LS.sent.map(recordMonth));
 }
 
 function knownMonths() {
@@ -593,6 +617,13 @@ async function refresh(silent) {
     if (icons) LS.icons = JSON.parse(icons.text);
 
     await loadMonth(currentMonth, true);
+
+    // Месяц, в котором что-то ждёт компьютера, перечитываем тоже. Иначе удаление
+    // в прошлом месяце висело бы вечно: в памяти телефона лежит копия, сделанная
+    // до удаления, и запись никогда не признавалась бы применённой.
+    for (const ym of pendingMonths())
+      if (ym !== currentMonth) await loadMonth(ym, true);
+
     reconcileSent();
     render();
   } catch (e) {
