@@ -220,8 +220,13 @@
   <div class="content">
     <div class="muted" id="forecast-info"></div>
 
+    <div id="forecast-near"></div>
+
     <label class="field">СРОК</label>
     <div class="chips" id="forecast-horizons"></div>
+
+    <label class="field">ИЛИ СВОЯ ДАТА</label>
+    <input type="date" id="forecast-until">
 
     <div class="split">
       <div>
@@ -287,8 +292,10 @@ const LS = {
   set icons(v) { LS.write('fw.icons', v); },
   get months() { return LS.read('fw.months', {}); },
   set months(v) { LS.write('fw.months', v); },
-  get queue() { return LS.read('fw.queue', []); },
+  get queue() { return LS.read('fw.queue', []); },        // ещё не отправлено
   set queue(v) { LS.write('fw.queue', v); },
+  get sent() { return LS.read('fw.sent', []); },          // отправлено, но компьютер ещё не подтвердил
+  set sent(v) { LS.write('fw.sent', v); },
 };
 
 // ═══════════════════════ GitHub ═══════════════════════
@@ -385,6 +392,13 @@ function iso(date) {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 }
 const todayISO = () => iso(new Date());
+
+// «14 сентября», с годом — только если он не текущий
+function shortDate(date) {
+  const text = date.getDate() + ' ' + MONTHS_GEN[date.getMonth()];
+  return date.getFullYear() === new Date().getFullYear() ? text : text + ' ' + date.getFullYear();
+}
+
 const monthKey = s => String(s).slice(0, 7);
 
 function monthTitle(ym) {
@@ -437,18 +451,40 @@ function effect(op) {
   return op.Kind === 1 ? op.Amount : -op.Amount;
 }
 
+/** Как операция меняет остаток конкретного счёта; перевод один уменьшает, другой увеличивает. */
+function effectOn(op, accountId) {
+  if (!op) return 0;
+  if (op.Kind === 2) {
+    if (op.AccountId === accountId) return -op.Amount;
+    if (op.ToAccountId === accountId) return op.Amount;
+    return 0;
+  }
+  if (op.AccountId !== accountId) return 0;
+  return op.Kind === 1 ? op.Amount : -op.Amount;
+}
+
 /**
- * Операции месяца с учётом того, что ещё не уехало на компьютер.
- * Очередь проходим по порядку: последняя запись про операцию побеждает,
- * иначе изменённая и затем удалённая операция возвращалась бы в список.
+ * Всё, что телефон знает, а компьютер ещё не подтвердил: и не отправленное,
+ * и отправленное, но не влитое в базу. До появления записи в данных с ПК
+ * показываем её сами — иначе операция пропадала бы из списка до синхронизации.
+ */
+function pendingRecords() {
+  return LS.queue.map(r => ({ ...r, _stage: 'queued' }))
+    .concat(LS.sent.map(r => ({ ...r, _stage: 'sent' })));
+}
+
+/**
+ * Операции месяца с учётом неподтверждённого.
+ * Записи проходим по порядку: последняя про операцию побеждает, иначе
+ * изменённая и затем удалённая операция возвращалась бы в список.
  */
 function opsOf(ym) {
   const stored = (LS.months[ym] || { operations: [] }).operations || [];
 
   const overrides = new Map();          // id → операция либо null, если удалена
-  for (const item of LS.queue) {
+  for (const item of pendingRecords()) {
     if (item.action === 'delete') overrides.set(item.opId, null);
-    else if (item.op) overrides.set(item.op.Id, item.op);
+    else if (item.op) overrides.set(item.op.Id, { ...item.op, _stage: item._stage });
   }
 
   const result = [];
@@ -467,8 +503,68 @@ function opsOf(ym) {
   return result;
 }
 
+/** Насколько неподтверждённые записи двигают общий баланс. */
 function pendingAdjust() {
-  return LS.queue.reduce((sum, item) => sum + (item.balanceDelta || 0), 0);
+  return pendingRecords().reduce((sum, item) => sum + recordDelta(item, effect), 0);
+}
+
+/** То же самое для одного счёта. */
+function pendingAdjustFor(accountId) {
+  return pendingRecords().reduce((sum, item) =>
+    sum + recordDelta(item, op => effectOn(op, accountId)), 0);
+}
+
+/**
+ * Вклад записи: новое состояние минус прежнее. Для новой операции прежнего нет,
+ * для удаления нет нового — поэтому обе стороны считаются одной формулой.
+ */
+function recordDelta(item, measure) {
+  const after = item.action === 'delete' ? null : item.op;
+  const before = item.prev || null;
+
+  // записи старого формата знали только общий сдвиг
+  if (!item.prev && item.action === 'delete' && typeof item.balanceDelta === 'number' && measure === effect)
+    return item.balanceDelta;
+
+  return measure(after) - measure(before);
+}
+
+/** Остаток счёта с учётом того, что ещё не доехало до компьютера. */
+function accountBalance(accountId) {
+  const base = (LS.state?.balances || {})[accountId] || 0;
+  return base + pendingAdjustFor(accountId);
+}
+
+/**
+ * Отправленные записи держим до тех пор, пока не увидим их в данных с компьютера.
+ * Сравниваем по содержимому: у правки идентификатор тот же, и одного его мало.
+ */
+function signature(op) {
+  return [op.Kind, op.Amount, op.CategoryId || '', op.AccountId || '',
+          op.ToAccountId || '', String(op.Date).slice(0, 10), (op.Note || '').trim()].join('|');
+}
+
+function reconcileSent() {
+  const rest = [];
+
+  for (const item of LS.sent) {
+    const id = item.action === 'delete' ? item.opId : item.op.Id;
+    const ym = item.action === 'delete'
+      ? (item.month || monthKey(item.prev ? item.prev.Date : todayISO()))
+      : monthKey(item.op.Date);
+
+    const month = LS.months[ym];
+    if (!month) { rest.push(item); continue; }          // месяц не загружен — судить не по чему
+
+    const stored = (month.operations || []).find(o => o.Id === id);
+    const applied = item.action === 'delete'
+      ? !stored
+      : (stored && signature(stored) === signature(item.op));
+
+    if (!applied) rest.push(item);
+  }
+
+  LS.sent = rest;
 }
 
 function knownMonths() {
@@ -497,6 +593,7 @@ async function refresh(silent) {
     if (icons) LS.icons = JSON.parse(icons.text);
 
     await loadMonth(currentMonth, true);
+    reconcileSent();
     render();
   } catch (e) {
     if (!silent) showBanner(e.message, true);
@@ -514,6 +611,7 @@ async function loadMonth(ym, force) {
   const file = await ghGet('ops/' + ym + '.json');
   cache[ym] = file ? JSON.parse(file.text) : { month: ym, operations: [] };
   LS.months = cache;
+  reconcileSent();
 }
 
 async function flushQueue() {
@@ -521,14 +619,20 @@ async function flushQueue() {
   if (!queue.length) return;
 
   const rest = [];
+  const delivered = [];
+
   for (const item of queue) {
     try {
       await ghPut('inbox/' + item.id + '.json', JSON.stringify(item), 'операция с телефона');
+      delivered.push(item);
     } catch (e) {
       rest.push(item);
     }
   }
+
   LS.queue = rest;
+  // отправленное не выбрасываем: показываем сами, пока компьютер не подтвердит
+  if (delivered.length) LS.sent = LS.sent.concat(delivered);
 }
 
 function enqueue(record) {
@@ -572,10 +676,16 @@ function render() {
   const state = LS.state;
   const queue = LS.queue;
 
-  byId('pending-banner').style.display = queue.length ? 'block' : 'none';
-  if (queue.length) {
+  const sent = LS.sent;
+  byId('pending-banner').style.display = (queue.length || sent.length) ? 'block' : 'none';
+  if (queue.length || sent.length) {
+    const parts = [];
+    if (queue.length) parts.push('ждут отправки: ' + queue.length);
+    if (sent.length) parts.push('ждут компьютера: ' + sent.length);
+
     byId('pending-banner').className = 'banner';
-    byId('pending-banner').textContent = 'Ждут отправки: ' + queue.length + '. Уйдут, когда появится связь.';
+    byId('pending-banner').textContent = parts.join(', ') +
+      '. Итоги ниже уже с их учётом.';
   }
 
   byId('btn-add').style.display = screen === 'ops' ? 'block' : 'none';
@@ -627,7 +737,9 @@ function opRowHtml(op) {
     '<div class="body"><div class="title">' + esc(title) + '</div>' +
     (op.Note ? '<div class="note">' + esc(op.Note) + '</div>' : '') +
     '</div><div><div class="amount" style="color:' + tint + '">' + amount + '</div>' +
-    '<div class="sub">' + (op._pending ? 'ждёт отправки' : esc(acc?.Name || '')) + '</div></div></div>';
+    '<div class="sub">' + (op._pending
+      ? (op._stage === 'sent' ? 'ждёт компьютера' : 'ждёт отправки')
+      : esc(acc?.Name || '')) + '</div></div></div>';
 }
 
 function renderOps(ops) {
@@ -697,12 +809,11 @@ function renderReport(ops) {
 
 function renderAccounts() {
   const state = LS.state;
-  const balances = state.balances || {};
   const accrued = state.accrued || {};
 
   let html = '<div class="card">';
   for (const acc of (state.accounts || []).filter(a => !a.Archived)) {
-    const balance = balances[acc.Id] || 0;
+    const balance = accountBalance(acc.Id);     // с учётом неподтверждённого
     const savings = acc.Kind === 1;
 
     html += '<div class="row" ' + (savings ? 'data-forecast="' + esc(acc.Id) + '"' : '') + '>' +
@@ -749,13 +860,14 @@ function renderBudgets() {
     const cat = categories[b.CategoryId];
     let spent = spentMap[b.Id] || 0;
 
-    // к тому, что посчитал компьютер, добавляем свои неотправленные траты текущего месяца
+    // к тому, что посчитал компьютер, добавляем свои неподтверждённые траты текущего месяца
     if (b.Period === 2) {
-      for (const item of LS.queue) {
-        if (item.action !== 'upsert') continue;
-        const op = item.op;
-        if (op.Kind === 0 && op.CategoryId === b.CategoryId && monthKey(op.Date) === thisMonth)
-          spent += op.Amount;
+      for (const item of pendingRecords()) {
+        const inBudget = op => op && op.Kind === 0 && op.CategoryId === b.CategoryId &&
+                               monthKey(op.Date) === thisMonth;
+        const after = item.action === 'delete' ? null : item.op;
+        if (inBudget(after)) spent += after.Amount;
+        if (inBudget(item.prev)) spent -= item.prev.Amount;
       }
     }
 
@@ -914,10 +1026,19 @@ function saveOperation() {
     createdUtc: new Date().toISOString(),
     action: 'upsert',
     op,
-    balanceDelta: effect(op) - effect(editing),
+    // прежнее состояние нужно, чтобы правильно двигать итоги по каждому счёту
+    prev: editing ? stripLocal(editing) : null,
   });
 
   byId('sheet-add').classList.remove('open');
+}
+
+/** Служебные пометки в базу не отправляем. */
+function stripLocal(op) {
+  const copy = { ...op };
+  delete copy._pending;
+  delete copy._stage;
+  return copy;
 }
 
 function deleteOperation() {
@@ -930,7 +1051,8 @@ function deleteOperation() {
     createdUtc: new Date().toISOString(),
     action: 'delete',
     opId: editing.Id,
-    balanceDelta: -effect(editing),
+    prev: stripLocal(editing),
+    month: monthKey(editing.Date),
   });
 
   byId('sheet-add').classList.remove('open');
@@ -947,21 +1069,113 @@ const daysInYear = y => ((y % 4 === 0 && y % 100 !== 0) || y % 400 === 0) ? 366 
 const daysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
 const isLastDayOfMonth = d => d.getDate() === daysInMonth(d.getFullYear(), d.getMonth());
 
+// Банк меняет ставку, и прошлые дни должны считаться по той, что действовала тогда.
+function rateOn(account, day) {
+  const history = account.RateHistory || [];
+  if (!history.length) return Number(account.AnnualRate) || 0;
+
+  const stamp = iso(day);
+  let best = null, earliest = null;
+
+  for (const change of history) {
+    const from = String(change.From).slice(0, 10);
+    if (!earliest || from < earliest.from) earliest = { from, rate: Number(change.Rate) || 0 };
+    if (from <= stamp && (!best || from > best.from)) best = { from, rate: Number(change.Rate) || 0 };
+  }
+
+  return best ? best.rate : earliest.rate;
+}
+
+// Сколько набежит за период — вместе с тем, что ещё не легло на счёт.
+// При ежемесячной капитализации заработанное сегодня зачислится в конце месяца.
+function accruedOver(account, startBalance, from, to, topUp, topUpDay, deltas) {
+  if (!account || account.Kind !== 1 || to < from) return 0;
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let balance = startBalance, accrued = 0, pending = 0;
+
+  for (let d = new Date(from.getTime()); d <= to; d = new Date(d.getTime() + 86400000)) {
+    // База дня — остаток на 00:00, то есть до операций этого дня
+    if (balance > 0) {
+      const add = balance * rateOn(account, d) / 100 / daysInYear(d.getFullYear());
+      accrued += add;
+      pending += add;
+    }
+
+    if (deltas) balance += deltas[iso(d)] || 0;
+
+    // будущие пополнения тоже начинают приносить проценты — со следующего дня
+    if (topUp > 0 && d > today && d.getDate() === Math.min(topUpDay, daysInMonth(d.getFullYear(), d.getMonth())))
+      balance += topUp;
+
+    if (account.Capitalization === 1 || isLastDayOfMonth(d)) {
+      balance += round2(pending);
+      pending = 0;
+    }
+  }
+
+  return round2(accrued);
+}
+
+/**
+ * Остаток счёта на 00:00 указанного дня и его изменения по дням дальше —
+ * то же, что на компьютере даёт `Store.AccountBalanceAsOf` со списком операций.
+ * В `state.balances` лежит остаток со всеми операциями любой даты, поэтому
+ * всё, что случилось в этот день и позже, вычитаем обратно.
+ */
+function accountTimeline(accountId, from) {
+  const stamp = iso(from);
+
+  const months = new Set(Object.keys(LS.months || {}));
+  for (const item of pendingRecords()) {
+    if (item.op) months.add(monthKey(item.op.Date));
+    if (item.month) months.add(item.month);
+  }
+
+  let ahead = 0;
+  const deltas = {};
+
+  for (const ym of months) {
+    if (ym < monthKey(stamp)) continue;               // месяц целиком в прошлом
+
+    for (const op of opsOf(ym)) {
+      const day = String(op.Date).slice(0, 10);
+      if (day < stamp) continue;
+
+      const signed = effectOn(op, accountId);
+      if (!signed) continue;
+
+      ahead += signed;
+      deltas[day] = (deltas[day] || 0) + signed;
+    }
+  }
+
+  return { opening: accountBalance(accountId) - ahead, deltas };
+}
+
+// Когда набежавшее за этот день попадёт на счёт.
+function payoutDate(account, day) {
+  if (account.Capitalization === 1) return new Date(day.getTime());
+  return new Date(day.getFullYear(), day.getMonth(), daysInMonth(day.getFullYear(), day.getMonth()));
+}
+
 function computeForecast(account, startBalance, until, topUp, topUpDay) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const result = { start: startBalance, points: [{ date: iso(today), balance: startBalance, interest: 0 }],
                    interest: 0, added: 0, days: 0 };
 
   let balance = startBalance, pending = 0;
-  const rate = account.Kind === 1 ? Number(account.AnnualRate) || 0 : 0;
+  const savings = account.Kind === 1;
 
   for (let d = new Date(today.getTime() + 86400000); d <= until; d = new Date(d.getTime() + 86400000)) {
+    // на остаток в 00:00 — тем же порядком, что и настоящее начисление
+    const rate = savings ? rateOn(account, d) : 0;
+    if (rate > 0 && balance > 0) pending += balance * rate / 100 / daysInYear(d.getFullYear());
+
     if (topUp > 0) {
       const day = Math.min(topUpDay, daysInMonth(d.getFullYear(), d.getMonth()));
       if (d.getDate() === day) { balance += topUp; result.added += topUp; }
     }
-
-    if (rate > 0 && balance > 0) pending += balance * rate / 100 / daysInYear(d.getFullYear());
 
     const payout = account.Capitalization === 1 || isLastDayOfMonth(d);
     if (payout && rate > 0) {
@@ -991,38 +1205,97 @@ function openForecast(accountId) {
   byId('forecast-info').textContent =
     forecastAccount.Name + ': ставка ' + rateText(forecastAccount.AnnualRate) + ' годовых, ' +
     (forecastAccount.Capitalization === 1 ? 'ежедневная' : 'ежемесячная') + ' капитализация — ' +
-    'это ' + rateText(effRate) + ' в год. Сейчас ' + money((state.balances || {})[accountId] || 0) + '.';
+    'это ' + rateText(effRate) + ' в год. Сейчас ' + money(accountBalance(accountId)) + '.';
 
   const horizons = [
-    ['6 месяцев', 6], ['1 год', 12], ['3 года', 36], ['5 лет', 60], ['10 лет', 120],
+    ['неделя', 7, 0], ['месяц', 0, 1], ['3 месяца', 0, 3], ['полгода', 0, 6],
+    ['год', 0, 12], ['3 года', 0, 36], ['5 лет', 0, 60],
   ];
-  byId('forecast-horizons').innerHTML = horizons.map(([name, months], i) =>
-    '<button data-months="' + months + '"' + (i === 1 ? ' class="active"' : '') + '>' + name + '</button>').join('');
+  byId('forecast-horizons').innerHTML = horizons.map(([name, days, months], i) =>
+    '<button data-days="' + days + '" data-months="' + months + '"' +
+    (i === 4 ? ' class="active"' : '') + '>' + name + '</button>').join('');
 
   byId('forecast-horizons').querySelectorAll('button').forEach(b => {
     b.onclick = () => {
       byId('forecast-horizons').querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
-      const until = new Date(); until.setHours(0, 0, 0, 0);
-      until.setMonth(until.getMonth() + Number(b.dataset.months));
-      forecastUntil = until;
-      recalcForecast();
+      setForecastUntil(horizonDate(Number(b.dataset.days), Number(b.dataset.months)));
     };
   });
 
-  const until = new Date(); until.setHours(0, 0, 0, 0);
-  until.setFullYear(until.getFullYear() + 1);
-  forecastUntil = until;
-
+  setForecastUntil(horizonDate(0, 12));
   byId('sheet-forecast').classList.add('open');
+}
+
+function horizonDate(days, months) {
+  const until = new Date(); until.setHours(0, 0, 0, 0);
+  if (days) until.setDate(until.getDate() + days);
+  if (months) until.setMonth(until.getMonth() + months);
+  return until;
+}
+
+function setForecastUntil(until) {
+  forecastUntil = until;
+  byId('forecast-until').value = iso(until);
   recalcForecast();
+}
+
+// «Сколько набежит» — короткие сроки, которые видно каждый день,
+// в отличие от прогноза на годы вперёд.
+// «Сколько набежит» показывает заработанное, а не зачисленное: при ежемесячной
+// капитализации деньги за сегодня лягут на счёт в конце месяца, но заработаны уже сегодня.
+function renderNearTerm(account, balance, topUp, topUpDay) {
+  const box = byId('forecast-near');
+  if (account.Kind !== 1) { box.innerHTML = ''; return; }
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const day = ms => new Date(today.getTime() + ms * 86400000);
+  const endOfMonth = new Date(today.getFullYear(), today.getMonth(),
+    daysInMonth(today.getFullYear(), today.getMonth()));
+
+  const rows = [
+    ['сегодня', today, today],
+    ['завтра', day(1), day(1)],
+    ['за 7 дней', today, day(6)],
+    ['за 30 дней', today, day(29)],
+    ['до конца месяца', today, endOfMonth],
+  ];
+
+  if (forecastUntil && forecastUntil > today)
+    rows.push(['до ' + shortDate(forecastUntil), today, forecastUntil]);
+
+  let html = '<div class="card" style="margin-top:16px"><h3>Сколько набежит</h3>';
+
+  for (const [label, from, to] of rows) {
+    const timeline = accountTimeline(account.Id, from);
+    const amount = accruedOver(account, timeline.opening, from, to, topUp, topUpDay, timeline.deltas);
+
+    // подпись «зачислится» уместна, только когда весь период внутри одного месяца:
+    // за более длинные сроки проценты падают на счёт месяц за месяцем
+    const payout = payoutDate(account, to);
+    const sameMonth = from.getFullYear() === to.getFullYear() && from.getMonth() === to.getMonth();
+
+    const note = account.Capitalization !== 1 && payout > to && sameMonth
+      ? '<div class="note">зачислится ' + shortDate(payout) + '</div>' : '';
+
+    html += '<div class="row"><div class="body"><div class="title">' + label + '</div>' + note + '</div>' +
+      '<div class="amount" style="color:var(--income)">+' + money(amount) + '</div></div>';
+  }
+
+  if (account.Capitalization !== 1)
+    html += '<div class="muted" style="margin-top:10px">Здесь заработанное. ' +
+      'В «будет на счёте» ниже попадает только то, что банк успел зачислить в конце месяца.</div>';
+
+  box.innerHTML = html + '</div>';
 }
 
 function recalcForecast() {
   if (!forecastAccount || !forecastUntil) return;
 
-  const balance = (LS.state.balances || {})[forecastAccount.Id] || 0;
+  const balance = accountBalance(forecastAccount.Id);
   const topUp = evalAmount(byId('forecast-topup').value) || 0;
   const day = Math.max(1, Math.min(31, parseInt(byId('forecast-day').value, 10) || 1));
+
+  renderNearTerm(forecastAccount, balance, topUp, day);
 
   const f = computeForecast(forecastAccount, balance, forecastUntil, topUp, day);
   const own = f.start + f.added;
@@ -1155,6 +1428,19 @@ byId('add-delete').onclick = deleteOperation;
 byId('cfg-save').onclick = saveSettings;
 byId('forecast-topup').oninput = recalcForecast;
 byId('forecast-day').oninput = recalcForecast;
+
+byId('forecast-until').onchange = () => {
+  const value = byId('forecast-until').value;
+  if (!value) return;
+
+  const until = new Date(value + 'T00:00:00');
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  if (isNaN(until) || until <= today) { byId('forecast-until').value = iso(forecastUntil); return; }
+
+  byId('forecast-horizons').querySelectorAll('button').forEach(x => x.classList.remove('active'));
+  forecastUntil = until;
+  recalcForecast();
+};
 
 byId('cfg-forget').onclick = () => {
   if (confirm('Удалить настройки подключения с этого устройства?')) {
